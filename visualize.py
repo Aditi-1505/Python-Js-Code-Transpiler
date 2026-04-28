@@ -4,20 +4,7 @@ import os
 sys.path.insert(0, os.path.dirname(__file__))
 from lexer import Lexer
 from parser import Parser, print_ast
-from parser import (
-    Program, Number, String, FString, BoolLiteral, NoneLiteral,
-    ListLiteral, DictLiteral, TupleLiteral, SetLiteral,
-    Identifier, Attribute, Subscript, Slice,
-    BinaryOp, UnaryOp, BoolOp, Ternary, Lambda,
-    FunctionCall, MethodCall, ListComp,
-    Assignment, ComplexAssignment, AugmentedAssignment,
-    Print, Return, Raise, Delete, Assert, Pass, Break, Continue,
-    Global, Nonlocal,
-    If, While, For, ForIn, With,
-    FunctionDef, ClassDef,
-    TryExcept, ExceptHandler,
-    Import, FromImport,
-)
+
 from semantic import SemanticAnalyzer
 
 BG        = "#f5f0eb"
@@ -35,12 +22,12 @@ ERROR_BG  = "#fdf0f0"
 EDGE_RAW  = "#bbb0a4"
 
 NODE_COLORS = {
-    # Structure
+   
     "Program":              "#5b9bd5",
     "FunctionDef":          "#e05c9a",
     "ClassDef":             "#26a69a",
     "Lambda":               "#00897b",
-    # Statements
+    
     "Assignment":           "#9b72c8",
     "ComplexAssignment":    "#7c5cbf",
     "AugmentedAssignment":  "#8d6ab8",
@@ -56,7 +43,7 @@ NODE_COLORS = {
     "Nonlocal":             "#8d6e63",
     "Import":               "#78909c",
     "FromImport":           "#607d8b",
-    # Control flow
+    
     "If":                   "#d05050",
     "While":                "#c4648a",
     "For":                  "#7a6ebf",
@@ -64,7 +51,7 @@ NODE_COLORS = {
     "With":                 "#5c7abf",
     "TryExcept":            "#c0784a",
     "ExceptHandler":        "#bf6a3a",
-    # Expressions
+    
     "BinaryOp":             "#d4902a",
     "UnaryOp":              "#c47820",
     "BoolOp":               "#b86820",
@@ -74,7 +61,7 @@ NODE_COLORS = {
     "Attribute":            "#5b8fbf",
     "Subscript":            "#4a7faf",
     "ListComp":             "#43a869",
-    # Literals
+    
     "Number":               "#63b58a",
     "String":               "#c4a030",
     "FString":              "#b89020",
@@ -109,7 +96,7 @@ H_GAP = 20
 V_GAP = 50
 
 def get_children(node):
-    # Structure
+   
     if isinstance(node, Program):
         return node.statements
     if isinstance(node, FunctionDef):
@@ -118,7 +105,7 @@ def get_children(node):
         return list(node.body)
     if isinstance(node, Lambda):
         return [node.body]
-    # Statements
+    
     if isinstance(node, Assignment):
         return [node.value]
     if isinstance(node, ComplexAssignment):
@@ -135,7 +122,7 @@ def get_children(node):
         return list(node.targets)
     if isinstance(node, Assert):
         return ([node.test, node.msg] if node.msg else [node.test])
-    # Control flow
+   
     if isinstance(node, If):
         kids = [node.condition] + list(node.body)
         for cond, body in node.elif_clauses:
@@ -159,7 +146,7 @@ def get_children(node):
         return kids
     if isinstance(node, ExceptHandler):
         return list(node.body)
-    # Expressions
+    
     if isinstance(node, BinaryOp):
         return [node.left, node.right]
     if isinstance(node, UnaryOp):
@@ -183,7 +170,7 @@ def get_children(node):
         if node.cond:
             kids.append(node.cond)
         return kids
-    # Literals with children
+   
     if isinstance(node, (ListLiteral, TupleLiteral, SetLiteral)):
         return list(node.elements)
     if isinstance(node, DictLiteral):
@@ -191,7 +178,7 @@ def get_children(node):
     return []
 
 def node_labels(node):
-    # Structure
+    
     if isinstance(node, Program):
         return "Program", ""
     if isinstance(node, FunctionDef):
@@ -203,7 +190,7 @@ def node_labels(node):
     if isinstance(node, Lambda):
         params = ", ".join(node.params)
         return "lambda", params
-    # Statements
+    
     if isinstance(node, Assignment):
         name = node.name if isinstance(node.name, str) else str(node.name)
         return "Assign", name
@@ -237,7 +224,7 @@ def node_labels(node):
         return "Import", names
     if isinstance(node, FromImport):
         return "From", node.module
-    # Control flow
+    
     if isinstance(node, If):
         return "If", ""
     if isinstance(node, While):
@@ -257,7 +244,7 @@ def node_labels(node):
         exc = node.exc_type or "Exception"
         label = f"{exc}" + (f" as {node.name}" if node.name else "")
         return "Except", label
-    # Expressions
+   
     if isinstance(node, BinaryOp):
         sym = OP_SYMBOL.get(node.op.name, node.op.name)
         return "BinaryOp", sym
@@ -280,7 +267,7 @@ def node_labels(node):
         return "Slice", ""
     if isinstance(node, ListComp):
         return "ListComp", ""
-    # Literals
+   
     if isinstance(node, Number):
         return "Number", str(node.value)
     if isinstance(node, String):
