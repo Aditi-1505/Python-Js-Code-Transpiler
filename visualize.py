@@ -363,7 +363,6 @@ def draw_tree(canvas, ast_root):
     max_x = max(n.x + NW // 2 for n in nodes) + 36
     max_y = max(n.y + NH for n in nodes) + 36
     canvas.config(scrollregion=(0, 0, max_x, max_y))
-    # Ensure scroll region is applied after geometry is settled
     canvas.update_idletasks()
 
     for n in nodes:
@@ -489,19 +488,17 @@ class ASTVisualizerApp(tk.Tk):
     def __init__(self, source_code=None):
         super().__init__()
         self.title("AST Visualizer")
-        #self.geometry("1320x800")
-        #self.minsize(900, 600)
+        self.geometry("1320x800")
+        self.minsize(900, 600)
         self.configure(bg=BG)
         self._build_ui()
         self.__dict__["editor"] = self._text
         self.__dict__["canvas"] = self._canvas_raw
 
-        # If source code is provided (launched from main.py), pre-load and
-        # auto-visualize it after the window is fully rendered.
+        
         if source_code:
             self._text.delete("1.0", "end")
             self._text.insert("1.0", source_code)
-            # Delay draw so the canvas has correct dimensions after layout
             self.after(150, self._run)
         else:
             self._text.insert("1.0", SAMPLE.strip())
