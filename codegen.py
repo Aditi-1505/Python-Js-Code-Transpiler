@@ -26,7 +26,7 @@ _OP_MAP = {
     "BITWISE_AND":    "&",   "BITWISE_OR":     "|",
     "BITWISE_XOR":    "^",   "LSHIFT":         "<<",
     "RSHIFT":         ">>",
-    "IN":             None,  # handled specially
+    "IN":             None,  
     "IS":             "===", "IS_NOT":         "!==",
 }
 
@@ -91,14 +91,12 @@ _BUILTIN_MAP = {
 }
 
 _METHOD_MAP = {
-    # list methods
     "append":    "push",
-    "extend":    None,       # special: push(...spread)
+    "extend":    None,      
     "index":     "indexOf",
-    "count":     None,       # special
-    "copy":      None,       # [...arr]
-    "clear":     None,       # arr.length = 0
-    # str methods
+    "count":     None,       
+    "copy":      None,       
+    "clear":     None,       
     "upper":     "toUpperCase",
     "lower":     "toLowerCase",
     "strip":     "trim",
@@ -138,7 +136,6 @@ class CodeGenError(Exception):
 
 
 def _collect_assigned(stmts):
-    """Collect all variable names assigned in a block of statements."""
     names = set()
     for node in stmts:
         if isinstance(node, Assignment):
@@ -159,7 +156,7 @@ def _collect_assigned(stmts):
 
 
 class CodeGenerator:
-    _decorators = {}   # class-level attribute — satisfies executor.py version check
+    _decorators = {}   
 
     def __init__(self, indent_size=2):
         self._indent_size = indent_size
@@ -168,9 +165,9 @@ class CodeGenerator:
         self._in_class    = False    
         self._class_stack = []       
         self._class_names = set()    
-        self._decorators  = {}       # instance-level: func_name -> [decorator_names]
-        self._in_function = False    # track if we're inside a function
-        self._function_params = {}   # track params per function: func_name -> set(param_names)
+        self._decorators  = {}      
+        self._in_function = False    
+        self._function_params = {}   
 
     @property
     def pad(self):
@@ -183,11 +180,9 @@ class CodeGenerator:
         self._level -= 1
 
     def generate(self, node):
-        """Generate JavaScript from Python AST."""
         if not isinstance(node, Program):
             raise CodeGenError(f"Expected Program, got {type(node).__name__}")
         
-        # First pass: collect class names and decorators
         for stmt in node.statements:
             if isinstance(stmt, ClassDef):
                 self._class_names.add(stmt.name)
@@ -202,7 +197,6 @@ class CodeGenerator:
         return "\n".join(lines)
 
     def gen_stmt(self, node):
-        """Generate a single statement."""
         if isinstance(node, Assignment):       
             return self.gen_assignment(node)
         if isinstance(node, ComplexAssignment):
@@ -260,7 +254,6 @@ class CodeGenerator:
         raise CodeGenError(f"Unknown statement node: {type(node).__name__}")
 
     def gen_assignment(self, node):
-        """Generate assignment statement."""
         val = self.gen_expr(node.value)
         if node.name not in self._declared:
             self._declared.add(node.name)
@@ -268,13 +261,11 @@ class CodeGenerator:
         return [f"{self.pad}{node.name} = {val};"]
 
     def gen_complex_assign(self, node):
-        """Generate complex assignment (e.g., a[i] = x, obj.attr = y)."""
         target = self.gen_expr(node.target)
         val    = self.gen_expr(node.value)
         return [f"{self.pad}{target} = {val};"]
 
     def gen_aug_assign(self, node):
-        """Generate augmented assignment (+=, -=, etc.)."""
         target = self.gen_expr(node.target)
         val    = self.gen_expr(node.value)
         if node.op == "//=":
@@ -282,27 +273,23 @@ class CodeGenerator:
         return [f"{self.pad}{target} {node.op} {val};"]
 
     def gen_return(self, node):
-        """Generate return statement."""
         if node.value is None:
             return [f"{self.pad}return;"]
         return [f"{self.pad}return {self.gen_expr(node.value)};"]
 
     def gen_raise(self, node):
-        """Generate throw statement."""
         if node.exc is None:
             return [f"{self.pad}throw new Error();"]
         exc_js = self.gen_expr(node.exc)
         return [f"{self.pad}throw {exc_js};"]
 
     def gen_delete(self, node):
-        """Generate delete statements."""
         lines = []
         for t in node.targets:
             lines.append(f"{self.pad}delete {self.gen_expr(t)};")
         return lines
 
     def gen_assert(self, node):
-        """Generate assertion statement."""
         test = self.gen_expr(node.test)
         if node.msg:
             msg = self.gen_expr(node.msg)
@@ -310,10 +297,7 @@ class CodeGenerator:
         return [f"{self.pad}console.assert({test});"]
 
     def gen_if(self, node):
-        """Generate if/elif/else statement."""
         lines = []
-        
-        # Pre-declare all variables that might be assigned in any branch
         all_bodies = ([node.body]
                       + [b for _, b in node.elif_clauses]
                       + ([node.else_body] if node.else_body else []))
@@ -337,7 +321,6 @@ class CodeGenerator:
         return lines
 
     def gen_while(self, node):
-        """Generate while loop."""
         cond  = self.gen_expr(node.condition)
         lines = [f"{self.pad}while ({cond}) {{"]
         lines.extend(self.gen_block(node.body))
@@ -345,7 +328,6 @@ class CodeGenerator:
         return lines
 
     def gen_for(self, node):
-        """Generate C-style for loop (for i in range(...))."""
         var   = node.var
         start = self.gen_expr(node.start)
         stop  = self.gen_expr(node.stop)
@@ -374,7 +356,6 @@ class CodeGenerator:
         return lines
 
     def gen_for_in(self, node):
-        """Generate for-of loop (for x in iterable)."""
         iter_js = self.gen_expr(node.iterable)
         if isinstance(node.var, list):
             for v in node.var:
@@ -391,7 +372,6 @@ class CodeGenerator:
         return lines
 
     def gen_with(self, node):
-        """Generate with statement (mapped to a scoped block)."""
         lines = [f"{self.pad}{{  // with {self.gen_expr(node.expr)}"]
         if node.alias:
             if node.alias not in self._declared:
@@ -405,20 +385,15 @@ class CodeGenerator:
         return lines
 
     def gen_function_def(self, node):
-        """Generate function definition."""
         lines = []
-        
-        # Generate decorators as comments, but track them for later application
         for d in node.decorators:
             lines.append(f"{self.pad}// @{d}")
         
         params = list(node.params)
-        
-        # Remove 'self' parameter for methods
+    
         if self._in_class and params and params[0] == "self":
             params = params[1:]
-        
-        # Build parameter string with defaults
+       
         param_parts = []
         for p in params:
             if p in node.defaults:
@@ -426,11 +401,9 @@ class CodeGenerator:
             else:
                 param_parts.append(p)
         
-        # Handle *args
         if node.vararg:
             param_parts.append(f"...{node.vararg}")
         
-        # Handle **kwargs — rename to __kwargs and bind inside function
         has_kwargs = bool(node.kwarg)
         if has_kwargs:
             param_parts.append(f"...__kwargs")
@@ -442,10 +415,7 @@ class CodeGenerator:
             header  = f"{self.pad}{fn_name}({param_str}) {{"
         else:
             header = f"{self.pad}function {node.name}({param_str}) {{"
-        
         lines.append(header)
-        
-        # Save context and switch to function scope
         saved_declared = self._declared
         saved_in_class = self._in_class
         saved_in_function = self._in_function
@@ -453,8 +423,6 @@ class CodeGenerator:
         self._declared = set(params)
         if node.vararg:
             self._declared.add(node.vararg)
-        
-        # **kwargs handling: bind __kwargs to original name at function start
         if has_kwargs:
             self.indent()
             self._declared.add(node.kwarg)
@@ -471,8 +439,6 @@ class CodeGenerator:
         self._in_function = saved_in_function
         
         lines.append(f"{self.pad}}}")
-        
-        # Apply decorators if any (simple wrapping pattern)
         if node.decorators:
             for decorator in reversed(node.decorators):
                 fn_name = node.name
@@ -481,14 +447,9 @@ class CodeGenerator:
         return lines
 
     def gen_class_def(self, node):
-        """Generate class definition with proper inheritance."""
         lines = []
-        
-        # Decorators as comments
         for d in node.decorators:
             lines.append(f"{self.pad}// @{d}")
-        
-        # Handle inheritance (JavaScript only supports single inheritance via extends)
         if node.bases:
             if len(node.bases) > 1:
                 raise CodeGenError(
@@ -505,18 +466,14 @@ class CodeGenerator:
         saved_in_class = self._in_class
         self._declared = set()
         self._in_class = True
-        
         self._class_stack.append(node.name)
         self.indent()
-        
-        # Track static properties
         static_props = {}
         
         for stmt in node.body:
             if isinstance(stmt, FunctionDef):
                 lines.extend(self.gen_function_def(stmt))
             elif isinstance(stmt, Assignment):
-                # Class-level attribute → static property
                 static_props[stmt.name] = stmt.value
                 lines.append(
                     f"{self.pad}static {stmt.name} = {self.gen_expr(stmt.value)};"
@@ -528,21 +485,17 @@ class CodeGenerator:
         
         self.dedent()
         self._class_stack.pop()
-        
         self._declared = saved_declared
         self._in_class = saved_in_class
-        
         lines.append(f"{self.pad}}}")
         
         return lines
 
     def gen_try(self, node):
-        """Generate try/except/finally statement with proper exception handling."""
         lines = [f"{self.pad}try {{"]
         lines.extend(self.gen_block(node.body))
         
         if node.handlers:
-            # Determine the catch variable name
             catch_var = None
             for h in node.handlers:
                 if h.name:
@@ -552,17 +505,12 @@ class CodeGenerator:
             
             lines.append(f"{self.pad}}} catch ({catch_var}) {{")
             self.indent()
-            
             first = True
             for h in node.handlers:
                 if h.exc_type:
-                    # Map Python exception type to JavaScript
                     js_exc = _BUILTIN_MAP.get(h.exc_type, h.exc_type)
                     
-                    # Special handling: some Python exceptions throw TypeError in JS
                     if h.exc_type == "ValueError":
-                        # ValueError in Python doesn't directly map to JS
-                        # We check if it's an Error (generic catch-all)
                         kw = "if" if first else "else if"
                         lines.append(f"{self.pad}{kw} ({catch_var} instanceof Error) {{")
                     else:
@@ -576,7 +524,6 @@ class CodeGenerator:
                     lines.append(f"{self.pad}}}")
                     first = False
                 else:
-                    # Catch-all handler
                     if not first:
                         lines.append(f"{self.pad}else {{")
                     lines.extend(self.gen_block(h.body))
@@ -621,7 +568,6 @@ class CodeGenerator:
 }
 
     def gen_import(self, node):
-        """Generate import statement."""
         lines = []
         for mod, import_alias in node.names:
             base = mod.split(".")[0]
@@ -661,7 +607,6 @@ class CodeGenerator:
     }
     
     def gen_from_import(self, node):
-        """Generate from ... import statement."""
         mod = node.module
         if mod in self._FROM_IMPORT_MAP:
             lines = []
@@ -675,11 +620,9 @@ class CodeGenerator:
         
         if any(n == "*" for n, _ in node.names):
             return [f"{self.pad}import * as {mod.split('.')[-1]} from '{mod}';"]
-        
         return [f"{self.pad}import {{ {names_js} }} from '{mod}';"]
 
     def gen_block(self, stmts):
-        """Generate a block of statements."""
         self.indent()
         lines = []
         for stmt in stmts:
@@ -688,7 +631,6 @@ class CodeGenerator:
         return lines
 
     def gen_expr(self, node):
-        """Generate an expression."""
         if isinstance(node, Number):          
             return self.gen_number(node)
         if isinstance(node, String):          
@@ -734,7 +676,6 @@ class CodeGenerator:
         raise CodeGenError(f"Unknown expression node: {type(node).__name__}")
 
     def gen_number(self, node):
-        """Generate numeric literal."""
         v = node.value
         low = v.lower()
         if low.startswith("0x") or low.startswith("0b") or low.startswith("0o"):
@@ -761,7 +702,6 @@ class CodeGenerator:
         return f'"{escaped}"'
 
     def gen_fstring(self, node):
-        """Generate f-string as template literal."""
         from lexer import Lexer as _Lexer
         from parser import Parser as _Parser
         
@@ -806,7 +746,6 @@ class CodeGenerator:
         return f'`{result}`'
 
     def _map_identifier(self, name):
-        """Map Python identifiers to JavaScript equivalents."""
         if name == "self":      
             return "this"
         if name == "True":      
@@ -822,12 +761,10 @@ class CodeGenerator:
         return name
 
     def gen_attribute(self, node):
-        """Generate attribute access."""
         obj = self.gen_expr(node.value)
         return f"{obj}.{node.attr}"
 
     def gen_subscript(self, node):
-        """Generate subscript access (array/dict indexing)."""
         obj = self.gen_expr(node.value)
         if isinstance(node.index, Slice):
             return self._gen_slice_call(obj, node.index)
@@ -835,7 +772,6 @@ class CodeGenerator:
         return f"{obj}[{idx}]"
 
     def _gen_slice_call(self, obj, sl):
-        """Generate slice operation."""
         lower = self.gen_expr(sl.lower) if sl.lower else "0"
         upper = self.gen_expr(sl.upper) if sl.upper else None
         step  = self.gen_expr(sl.step)  if sl.step  else None
@@ -849,18 +785,15 @@ class CodeGenerator:
         return f"{obj}.slice({lower})"
 
     def gen_slice(self, node):
-        """Generate slice literal (inside brackets)."""
         lower = self.gen_expr(node.lower) if node.lower else "0"
         upper = self.gen_expr(node.upper) if node.upper else ""
         return f"{lower}:{upper}"
 
     def gen_list(self, node):
-        """Generate list literal."""
         items = ", ".join(self.gen_expr(e) for e in node.elements)
         return f"[{items}]"
 
     def gen_dict(self, node):
-        """Generate object/dict literal."""
         pairs = ", ".join(
             f"{self.gen_expr(k)}: {self.gen_expr(v)}"
             for k, v in node.pairs
@@ -868,17 +801,14 @@ class CodeGenerator:
         return "{" + pairs + "}"
 
     def gen_tuple(self, node):
-        """Generate tuple as array."""
         items = ", ".join(self.gen_expr(e) for e in node.elements)
         return f"[{items}]"
 
     def gen_set(self, node):
-        """Generate Set literal."""
         items = ", ".join(self.gen_expr(e) for e in node.elements)
         return f"new Set([{items}])"
 
     def gen_list_comp(self, node):
-        """Generate list comprehension."""
         iter_js = self.gen_expr(node.iter_)
         elt_js  = self.gen_expr(node.elt)
         var     = node.target
@@ -889,7 +819,6 @@ class CodeGenerator:
         return f"{iter_js}.map(({var}) => {elt_js})"
 
     def gen_binary(self, node):
-        """Generate binary operation."""
         left  = self.gen_expr(node.left)
         right = self.gen_expr(node.right)
 
@@ -926,7 +855,6 @@ class CodeGenerator:
         return f"{left} {js_op} {right}"
 
     def _maybe_paren(self, child_node, child_js):
-        """Add parentheses if needed for precedence."""
         if isinstance(child_node, BinaryOp):
             return f"({child_js})"
         if isinstance(child_node, BoolOp):
@@ -934,7 +862,6 @@ class CodeGenerator:
         return child_js
 
     def gen_unary(self, node):
-        """Generate unary operation."""
         if node.op == "not" and isinstance(node.operand, BinaryOp) and node.operand.op.name == "IN":
             left  = self.gen_expr(node.operand.left)
             right = self.gen_expr(node.operand.right)
@@ -954,44 +881,37 @@ class CodeGenerator:
         return f"{node.op}{operand}"
 
     def gen_boolop(self, node):
-        """Generate boolean operation (and/or)."""
         js_op  = "&&" if node.op == "and" else "||"
         parts  = [f"({self.gen_expr(v)})" if isinstance(v, BoolOp) else self.gen_expr(v)
                   for v in node.values]
         return f" {js_op} ".join(parts)
 
     def gen_ternary(self, node):
-        """Generate ternary conditional."""
         test   = self.gen_expr(node.test)
         body   = self.gen_expr(node.body)
         orelse = self.gen_expr(node.orelse)
         return f"({test} ? {body} : {orelse})"
 
     def gen_lambda(self, node):
-        """Generate lambda as arrow function."""
         params = ", ".join(node.params)
         body   = self.gen_expr(node.body)
         return f"(({params}) => {body})"
 
     def gen_call(self, node):
-        """Generate function call with special handling for builtins."""
         name = node.name
         args = node.args
         js_args = [self.gen_expr(a) for a in args]
         kw_args = {k: self.gen_expr(v) for k, v in node.kwargs.items()}
 
-        # len() builtin
         if name == "len" and len(args) == 1:
             return f"{js_args[0]}.length"
 
-        # int() builtin with proper error handling
         if name == "int":
             if len(args) == 1:
                 return f"parseInt({js_args[0]})"
             if len(args) == 2:
                 return f"parseInt({js_args[0]}, {js_args[1]})"
 
-        # range() builtin
         if name == "range":
             if len(args) == 1:
                 return f"Array.from({{length: {js_args[0]}}}, (_, i) => i)"
@@ -1004,7 +924,6 @@ class CodeGenerator:
                         f"(_, i) => {js_args[0]} + i * {step})")
             return f"/* range({', '.join(js_args)}) */"
 
-        # sorted() builtin
         if name == "sorted":
             if len(args) == 1:
                 return f"[...{js_args[0]}].sort()"
@@ -1012,31 +931,25 @@ class CodeGenerator:
                 return f"[...{js_args[0]}].sort((a, b) => {kw_args['key']}(a) > {kw_args['key']}(b) ? 1 : -1)"
             return f"[...{js_args[0]}].sort()"
 
-        # reversed() builtin
         if name == "reversed":
             return f"[...{js_args[0]}].reverse()" if js_args else "[]"
 
-        # sum() builtin
         if name == "sum":
             if js_args:
                 initial = js_args[1] if len(js_args) > 1 else "0"
                 return f"{js_args[0]}.reduce((a, b) => a + b, {initial})"
             return "0"
 
-        # any() builtin
         if name == "any":
             return f"{js_args[0]}.some(Boolean)" if js_args else "false"
 
-        # all() builtin
         if name == "all":
             return f"{js_args[0]}.every(Boolean)" if js_args else "true"
 
-        # enumerate() builtin
         if name == "enumerate":
             src = js_args[0]
             return f"{src}.map((v, i) => [i, v])"
 
-        # zip() builtin with variable args support
         if name == "zip":
             if len(js_args) == 0:
                 return "[]"
@@ -1044,38 +957,32 @@ class CodeGenerator:
                 return f"{js_args[0]}.map(v => [v])"
             if len(js_args) == 2:
                 return f"{js_args[0]}.map((v, i) => [v, {js_args[1]}[i]])"
-            # For 3+ args, build transpose manually
             arr_list = ", ".join(js_args)
             return (f"Array.from({{length: Math.min(...[{arr_list}].map(a => a.length))}}, "
                     f"(_, i) => [{arr_list}].map(a => a[i]))")
 
-        # map() builtin
         if name == "map":
             if len(args) == 2:
                 return f"{js_args[1]}.map({js_args[0]})"
             return f"/* map({', '.join(js_args)}) */"
 
-        # filter() builtin
         if name == "filter":
             if len(args) == 2:
                 return f"{js_args[1]}.filter({js_args[0]})"
             return f"/* filter({', '.join(js_args)}) */"
 
-        # isinstance() builtin
         if name == "isinstance":
             if len(args) == 2:
                 cls_name = args[1].name if isinstance(args[1], Identifier) else ""
                 cls_js = _BUILTIN_MAP.get(cls_name, js_args[1])
                 return f"({js_args[0]} instanceof {cls_js})"
             return f"/* isinstance */"
-
-        # hasattr() builtin
+        
         if name == "hasattr":
             if len(args) == 2:
                 return f"({js_args[1]} in {js_args[0]})"
             return "/* hasattr */"
 
-        # getattr() builtin
         if name == "getattr":
             if len(args) == 2:
                 return f"{js_args[0]}[{js_args[1]}]"
@@ -1083,59 +990,47 @@ class CodeGenerator:
                 return f"({js_args[0]}[{js_args[1]}] !== undefined ? {js_args[0]}[{js_args[1]}] : {js_args[2]})"
             return "/* getattr */"
 
-        # setattr() builtin
         if name == "setattr":
             if len(args) == 3:
                 return f"{js_args[0]}[{js_args[1]}] = {js_args[2]}"
             return "/* setattr */"
 
-        # dict() builtin
         if name == "dict":
             if not args:
                 return "{}"
             return f"Object.fromEntries({js_args[0]})"
 
-        # set() builtin
         if name == "set":
             items = ", ".join(js_args)
             return f"new Set([{items}])"
 
-        # repr() builtin
         if name == "repr":
             return f"JSON.stringify({js_args[0]})" if js_args else '""'
 
-        # ord() builtin
         if name == "ord":
             return f"{js_args[0]}.charCodeAt(0)" if js_args else "0"
 
-        # hex() builtin
         if name == "hex":
             return f"'0x' + {js_args[0]}.toString(16)" if js_args else '"0x0"'
 
-        # oct() builtin
         if name == "oct":
             return f"'0o' + {js_args[0]}.toString(8)" if js_args else '"0o0"'
 
-        # bin() builtin
         if name == "bin":
             return f"'0b' + {js_args[0]}.toString(2)" if js_args else '"0b0"'
 
-        # abs() builtin
         if name == "abs":
             return f"Math.abs({js_args[0]})" if js_args else "0"
 
-        # super() special
         if name == "super":
             return "super"
 
-        # Flask web framework → Express
         if name == "Flask":
             return "express()"
 
         if name == "jsonify":
             return f"/* jsonify → */ ({', '.join(js_args)})"
         
-        # Exception constructors
         exc_names = {
             "Exception", "ValueError", "TypeError", "KeyError", "IndexError",
             "AttributeError", "NameError", "RuntimeError", "NotImplementedError",
@@ -1146,7 +1041,6 @@ class CodeGenerator:
             js_cls = _BUILTIN_MAP.get(name, "Error")
             return f"new {js_cls}({', '.join(js_args)})"
         
-        # Mapped builtins
         js_name = _BUILTIN_MAP.get(name)
         if js_name is not None:
             all_args = js_args[:]
@@ -1155,7 +1049,6 @@ class CodeGenerator:
                 all_args.append(kw_obj)
             return f"{js_name}({', '.join(all_args)})"
         
-        # Class constructor
         all_args = js_args[:]
         if kw_args:
             kw_obj = "{" + ", ".join(f"{k}: {v}" for k, v in kw_args.items()) + "}"
@@ -1164,17 +1057,14 @@ class CodeGenerator:
         if name in self._class_names:
             return f"new {name}({', '.join(all_args)})"
         
-        # Regular function call
         return f"{name}({', '.join(all_args)})"
 
     def gen_method_call(self, node):
-        """Generate method call with special handling for Python methods."""
         obj    = self.gen_expr(node.obj)
         method = node.method
         args   = [self.gen_expr(a) for a in node.args]
         kwargs = {k: self.gen_expr(v) for k, v in node.kwargs.items()}
         
-        # os.path methods
         if (isinstance(node.obj, Attribute) and
                 isinstance(node.obj.value, Identifier) and
                 node.obj.value.name == "os" and node.obj.attr == "path"):
@@ -1196,27 +1086,22 @@ class CodeGenerator:
                 return f"fs.statSync({', '.join(args)}).isDirectory()"
             return f"path.{method}({', '.join(args)})"
         
-        # sys.path methods
         if (isinstance(node.obj, Attribute) and
                 isinstance(node.obj.value, Identifier) and
                 node.obj.value.name == "sys" and node.obj.attr == "path"):
             return f"/* sys.path.{method}({', '.join(args)}) — not needed in Node.js */"
         
-        # Express app.run()
         if method == "run" and not args:
             port = kwargs.get("port", '"3000"')
             return f"{obj}.listen({port})"
         
-        # super().__init__() special case
         if (isinstance(node.obj, FunctionCall) and
                 node.obj.name == "super" and method == "__init__"):
             return f"super({', '.join(args)})"
         
-        # super().method() for other methods
         if isinstance(node.obj, FunctionCall) and node.obj.name == "super":
             return f"super.{method}({', '.join(args)})"
         
-        # List methods
         if method == "append":
             return f"{obj}.push({', '.join(args)})"
         
@@ -1233,7 +1118,6 @@ class CodeGenerator:
         if method == "pop":
             if args:
                 arg = args[0]
-                # Detect if it's a dict pop or list pop by checking arg pattern
                 is_dict_pop = (arg.startswith('"') or arg.startswith("'") or
                                not arg.lstrip('-').isdigit())
                 if is_dict_pop:
@@ -1253,7 +1137,6 @@ class CodeGenerator:
         if method == "clear":
             return f"({obj}.length = 0, undefined)"
         
-        # Dict methods
         if method == "keys":
             return f"Object.keys({obj})"
         
@@ -1272,24 +1155,20 @@ class CodeGenerator:
         if method == "update":
             return f"Object.assign({obj}, {args[0]})" if args else f"{obj}"
         
-        # String methods
         if method == "join":
             return f"{args[0]}.join({obj})" if args else f"{obj}.join('')"
         
         if method == "format":
-            # Use template literal instead of format string
             if args:
                 return f"`{obj.strip('\"')}`.replace(/{{0}}/g, {args[0]})"
             return f"`{obj.strip('\"')}`"
         
         if method == "encode":
-            # Python str.encode() → JavaScript Buffer or just return as-is
-            # For UTF-8: Buffer.from(str, 'utf-8')
+    
             encoding = args[0].strip('"\'') if args else "utf-8"
             return f"Buffer.from({obj}, '{encoding}')"
         
         if method == "decode":
-            # Buffer.toString(encoding)
             encoding = args[0].strip('"\'') if args else "utf-8"
             return f"{obj}.toString('{encoding}')"
         
@@ -1337,14 +1216,12 @@ class CodeGenerator:
         
         if method == "replace":
             if len(args) == 2:
-                # Replace all occurrences
                 return f"{obj}.split({args[0]}).join({args[1]})"
             return f"{obj}.replace({', '.join(args)})"
         
         if method == "split":
             return f"{obj}.split({', '.join(args)})"
         
-        # Set methods
         if method == "sort":
             if "key" in kwargs:
                 return f"{obj}.sort((a, b) => {kwargs['key']}(a) > {kwargs['key']}(b) ? 1 : -1)"
@@ -1355,8 +1232,7 @@ class CodeGenerator:
         
         if method == "reverse":
             return f"{obj}.reverse()"
-        
-        # Set operations
+
         if method == "add":
             return f"{obj}.add({', '.join(args)})"
         
