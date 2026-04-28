@@ -272,6 +272,58 @@ class Lexer:
                 self.tokens.append(Token(three_ops[three], three, line_num, column))
                 i += 3
                 continue
+
+           
+            two = line[i:i+2] if i + 1 < len(line) else ""
+            two_ops = {
+                "//": TokenType.FLOOR_DIVIDE,
+                "**": TokenType.POWER,
+                "==": TokenType.DOUBLE_EQUALS,
+                "!=": TokenType.NOT_EQUALS,
+                "<=": TokenType.LESS_EQUAL,
+                ">=": TokenType.GREATER_EQUAL,
+                "+=": TokenType.PLUS_EQUALS,
+                "-=": TokenType.MINUS_EQUALS,
+                "*=": TokenType.MULTIPLY_EQUALS,
+                "/=": TokenType.DIVIDE_EQUALS,
+                "%=": TokenType.MODULO_EQUALS,
+                "->": TokenType.ARROW,
+                "<<": TokenType.LSHIFT,
+                ">>": TokenType.RSHIFT,
+            }
+            if two in two_ops:
+                self.tokens.append(Token(two_ops[two], two, line_num, column))
+                i += 2
+                continue
+
+            single = {
+                "+": TokenType.PLUS,   "-": TokenType.MINUS,
+                "*": TokenType.MULTIPLY, "/": TokenType.DIVIDE,
+                "%": TokenType.MODULO,  "=": TokenType.EQUALS,
+                "<": TokenType.LESS_THAN, ">": TokenType.GREATER_THAN,
+                "(": TokenType.LPAREN,  ")": TokenType.RPAREN,
+                "[": TokenType.LBRACKET, "]": TokenType.RBRACKET,
+                "{": TokenType.LBRACE,  "}": TokenType.RBRACE,
+                ",": TokenType.COMMA,   ":": TokenType.COLON,
+                ";": TokenType.SEMICOLON, ".": TokenType.DOT,
+                "@": TokenType.AT,      "~": TokenType.TILDE,
+                "&": TokenType.BITWISE_AND, "|": TokenType.BITWISE_OR,
+                "^": TokenType.BITWISE_XOR,
+            }
+            if char in single:
+                ttype = single[char]
+                self.tokens.append(Token(ttype, char, line_num, column))
+                # Track bracket depth
+                if char in ('(', '[', '{'):
+                    self._bracket_depth += 1
+                elif char in (')', ']', '}'):
+                    self._bracket_depth = max(0, self._bracket_depth - 1)
+                i += 1
+                continue
+
+            raise LexerError(f"Unrecognized character '{char}'",
+                             line_num, column)
+
     
 
     def parsenumber(self, line, start, line_num, column):
