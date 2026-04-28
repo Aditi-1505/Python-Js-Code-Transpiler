@@ -1,0 +1,184 @@
+name = input("Enter your name")
+marks = int(input("Enter your marks"))
+print("Student:", name)
+print("Marks:", marks)
+total = marks + 20
+average = total / 2
+print("Total:", total)
+print("Average:", average)
+if marks >= 90:
+    grade = "A"
+elif marks >= 75:
+    grade = "B"
+elif marks >= 60:
+    grade = "C"
+else:
+    grade = "D"
+print("Grade:", grade)
+
+
+2.  num = 1
+    sum = 0
+    while num <= 10:
+        sum = sum + num
+        cube = pow(num, 3)
+        print("Number:", num)
+        print("Cube:", cube)
+        if cube % 2 == 0:
+            print("Cube is even")
+        else:
+            print("Cube is odd")
+        num = num + 1
+    print("Final sum:", sum)
+    print("Program finished")
+
+
+
+3.
+    limit = int(input("Enter limit"))
+    i = 1
+    sum = 0
+    while i <= limit:
+        square = pow(i, 2)
+        cube = pow(i, 3)
+        print("Number:", i)
+        print("Square:", square)
+        print("Cube:", cube)
+        sum = sum + square
+        if square % 2 == 0:
+            print("Square is even")
+        else:
+            print("Square is odd")
+        i = i + 1
+    print("Sum of squares:", sum)
+    print("Program complete")
+
+4.
+if __name__ == '__main__':
+    print("Enter Python code")
+
+    lines = []
+    while True:
+        line = input()
+        if line.strip() == ' ':
+            break
+        lines.append(line)
+
+    code = '\n'.join(lines)
+
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    print(f"\n{'Type':<12} {'Value'}")
+    print("-" * 25)
+
+    for tok in tokens:
+        print(f"{tok.type.name:<12} {tok.value}")
+
+
+5.
+from transpiler import run_transpiler
+from executor import run_executor
+from lexer import LexerError, Lexer
+from semantic import SemanticError, SemanticAnalyzer
+from codegen import CodeGenError
+from parser import Parser, FunctionDef, ClassDef, Import, FromImport, Program
+def _has_runnable_statements(source_code):
+    try:
+        tokens = Lexer(source_code).tokenize()
+        ast    = Parser(tokens).parse()
+        for stmt in ast.statements:
+            if not isinstance(stmt, (FunctionDef, ClassDef, Import, FromImport)):
+                return True
+        return False
+    except Exception:
+        return True   
+
+
+6.
+import math
+def calculate_values(n):
+    return math.sqrt(n)
+    return math.pow(n, 2)
+num = int(input("Enter number: "))
+root = calculate_values(num)
+square = calculate_values(num)
+print("Square Root:", root)
+print("Square:", square)
+
+
+
+7.
+def add(a, b):
+    return a + b
+def subtract(a, b):
+    return a - b
+def multiply(a, b):
+    return a * b
+def divide(a, b):
+    if b == 0:
+        return "Cannot divide by zero"
+    return a / b
+def main():
+    print("Enter two numbers:")
+    x = float(input("First number: "))
+    y = float(input("Second number: "))
+    print("\nChoose operation:")
+    print("1. Add")
+    print("2. Subtract")
+    print("3. Multiply")
+    print("4. Divide")
+    choice = input("Enter choice (1-4): ")
+    if choice == '1':
+        print("Result:", add(x, y))
+    elif choice == '2':
+        print("Result:", subtract(x, y))
+    elif choice == '3':
+        print("Result:", multiply(x, y))
+    elif choice == '4':
+        print("Result:", divide(x, y))
+    else:
+        print("Invalid choice")
+main()
+
+
+8.
+# Function to take list input
+def create_list():
+    n = int(input("Enter number of elements: "))
+    lst = []
+    for i in range(n):
+        val = int(input(f"Enter element {i+1}: "))
+        lst.append(val)
+    return lst
+
+# Function to find sum of list
+def find_sum(lst):
+    return sum(lst)
+
+# Function to find maximum element
+def find_max(lst):
+    return max(lst)
+
+# Function to find minimum element
+def find_min(lst):
+    return min(lst)
+
+# Function to sort list
+def sort_list(lst):
+    return sorted(lst)
+
+# Function to display list
+def display(lst):
+    print("List:", lst)
+
+# Main function
+def main():
+    my_list = create_list()
+
+    display(my_list)
+    print("Sum:", find_sum(my_list))
+    print("Maximum:", find_max(my_list))
+    print("Minimum:", find_min(my_list))
+    print("Sorted List:", sort_list(my_list))
+
+main()
