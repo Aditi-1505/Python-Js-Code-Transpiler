@@ -24,7 +24,6 @@ _RUNTIME_UNSAFE = {
     r'\bos\.system\s*\(':    "os.system",
 }
 
-
 def check_runtime_unsafe(source_code):
     found = []
     for pattern, name in _RUNTIME_UNSAFE.items():
@@ -32,13 +31,11 @@ def check_runtime_unsafe(source_code):
             found.append(name)
     return found
 
-
 def get_js_code(source_code):
     tokens = Lexer(source_code).tokenize()
     ast    = Parser(tokens).parse()
     SemanticAnalyzer().analyze(ast)
     return CodeGenerator().generate(ast)
-
 
 def extract_input_prompts(source_code):
     prompts = []
@@ -50,7 +47,6 @@ def extract_input_prompts(source_code):
         else:
             prompts.append(None)
     return prompts
-
 
 def collect_user_inputs(source_code):
     prompts = extract_input_prompts(source_code)
@@ -64,7 +60,6 @@ def collect_user_inputs(source_code):
         val   = input(f"  {label}: ")
         values.append(val)
     return values
-
 
 def run_python(source_code, user_inputs):
     stdin_data = "\n".join(user_inputs) + ("\n" if user_inputs else "")
@@ -84,7 +79,6 @@ def run_python(source_code, user_inputs):
         return "[Error] Python execution timed out."
     except Exception as e:
         return f"[Error] {str(e)}"
-
 
 def run_js(js_code, user_inputs):
     inputs_js = "[" + ", ".join(f'"{v}"' for v in user_inputs) + "]"
@@ -143,10 +137,8 @@ def run_js(js_code, user_inputs):
             except:
                 pass  
 
-
 def _normalize(text):
     return re.sub(r'(-?\d+)\.0\b', r'\1', text)
-
 
 def run_executor(source_code):
     print("\n" + "=" * 50)
