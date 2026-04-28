@@ -1,4 +1,5 @@
-🚀 Code Transpiler: Python → JavaScript
+**🚀 Code Transpiler: Python → JavaScript**
+
 📌 Overview
 
 The Python to JavaScript Transpiler is a compiler-based project that converts Python source code into equivalent JavaScript code.
