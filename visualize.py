@@ -34,7 +34,59 @@ ERROR_FG  = "#b83232"
 ERROR_BG  = "#fdf0f0"
 EDGE_RAW  = "#bbb0a4"
 
-
+NODE_COLORS = {
+   
+    "Program":              "#5b9bd5",
+    "FunctionDef":          "#e05c9a",
+    "ClassDef":             "#26a69a",
+    "Lambda":               "#00897b",
+    
+    "Assignment":           "#9b72c8",
+    "ComplexAssignment":    "#7c5cbf",
+    "AugmentedAssignment":  "#8d6ab8",
+    "Print":                "#4aaa82",
+    "Return":               "#e57373",
+    "Raise":                "#ef5350",
+    "Delete":               "#d84315",
+    "Assert":               "#ff8a65",
+    "Pass":                 "#90a4ae",
+    "Break":                "#78909c",
+    "Continue":             "#546e7a",
+    "Global":               "#a1887f",
+    "Nonlocal":             "#8d6e63",
+    "Import":               "#78909c",
+    "FromImport":           "#607d8b",
+    
+    "If":                   "#d05050",
+    "While":                "#c4648a",
+    "For":                  "#7a6ebf",
+    "ForIn":                "#6a5fbf",
+    "With":                 "#5c7abf",
+    "TryExcept":            "#c0784a",
+    "ExceptHandler":        "#bf6a3a",
+    
+    "BinaryOp":             "#d4902a",
+    "UnaryOp":              "#c47820",
+    "BoolOp":               "#b86820",
+    "Ternary":              "#e09030",
+    "FunctionCall":         "#3aacbc",
+    "MethodCall":           "#2a9aac",
+    "Attribute":            "#5b8fbf",
+    "Subscript":            "#4a7faf",
+    "ListComp":             "#43a869",
+    
+    "Number":               "#63b58a",
+    "String":               "#c4a030",
+    "FString":              "#b89020",
+    "BoolLiteral":          "#5b9b7a",
+    "NoneLiteral":          "#9e9e9e",
+    "ListLiteral":          "#4caf7a",
+    "DictLiteral":          "#bf7040",
+    "TupleLiteral":         "#7a8fbf",
+    "SetLiteral":           "#bf5080",
+    "Identifier":           "#7097c4",
+    "Slice":                "#8899bb",
+}
 
 OP_SYMBOL = {
     "PLUS": "+",
