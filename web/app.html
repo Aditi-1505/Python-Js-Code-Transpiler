@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Py → JS · Transpiler</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="style.css"/>
+
+</head>
+<body>
+
+<header class="topbar">
+  <a href="#" class="logo">
+    <div class="logo-mark">⇄</div>
+    <span class="logo-name">Py<em>→</em>JS</span>
+  </a>
+
+  <div class="topbar-hint">
+    <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to run
+  </div>
+
+
+</header>
+
+<div class="statusbar">
+  <div class="status-dot" id="st-dot"></div>
+  <span class="status-text" id="st-text">Ready — write some Python and hit ▶ Transpile</span>
+  <div class="live-badge" id="live-badge">
+    <div class="live-dot"></div> Live
+  </div>
+</div>
+
+<div class="workspace">
+
+  <div class="editor-side">
+    <div class="panel-hdr">
+      <div class="panel-hdr-left">
+        <span class="file-dot"></span>
+        main.py
+      </div>
+      <span class="char-count" id="char-count">0 chars · 1 line</span>
+    </div>
+
+    <div class="editor-wrap">
+      <div class="line-nums" id="line-nums">1</div>
+      <textarea id="editor" spellcheck="false"
+        placeholder="# Write Python here&#10;x = 10&#10;y = 20&#10;print(x + y)"></textarea>
+    </div>
+
+    <div class="examples-strip">
+      <div class="strip-label">Quick examples</div>
+      <div class="chips">
+        <span class="chip" onclick="loadEx('hello')">Hello World</span>
+        <span class="chip" onclick="loadEx('loop')">For Loop</span>
+        <span class="chip" onclick="loadEx('while')">While Loop</span>
+        <span class="chip" onclick="loadEx('fib')">Fibonacci</span>
+        <span class="chip" onclick="loadEx('fizzbuzz')">FizzBuzz</span>
+        <span class="chip" onclick="loadEx('math')">Math Ops</span>
+        <span class="chip" onclick="loadEx('compare')">Comparisons</span>
+        <span class="chip" onclick="loadEx('nested')">Nested If</span>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn btn-primary" id="btn-run" onclick="runPipelineUI()">
+        ▶ Transpile
+        <span class="spinner" id="spinner"></span>
+      </button>
+      <button class="btn btn-ghost danger" onclick="clearAll()">✕ Clear</button>
+      <button class="btn btn-ghost cyan btn-spacer" onclick="copyJS()">⎘ Copy JS</button>
+    </div>
+  </div>
+
+  <div class="output-side">
+    <div class="tab-row">
+      <div class="tab-btn active" data-tab="tokens" onclick="switchTab('tokens')">
+        <span class="tab-pip"></span>Tokens
+      </div>
+      <div class="tab-btn" data-tab="ast" onclick="switchTab('ast')">
+        <span class="tab-pip"></span>AST
+      </div>
+      <div class="tab-btn" data-tab="sym" onclick="switchTab('sym')">
+        <span class="tab-pip"></span>Symbols
+      </div>
+      <div class="tab-btn" data-tab="semantic" onclick="switchTab('semantic')">
+        <span class="tab-pip"></span>Semantic
+      </div>
+      <div class="tab-btn" data-tab="js" onclick="switchTab('js')">
+        <span class="tab-pip"></span>JS Output
+      </div>
+      <div class="tab-btn" data-tab="executor" onclick="switchTab('executor')">
+        <span class="tab-pip"></span>Executor
+      </div>
+    </div>
+
+    <div class="panels">
+      <div class="panel active" id="panel-tokens">
+        <div class="warn-banner" id="warn-banner">
+          <strong>⚠ Runtime warning</strong>
+          <span id="warn-list"></span>
+        </div>
+        <pre class="code-block" id="out-tokens">Write some Python code on the left, then click ▶ Transpile to see the token stream here.</pre>
+      </div>
+
+    
+      <div class="panel canvas-panel" id="panel-ast">
+        <div class="canvas-toolbar">
+          <span class="canvas-title">Raw AST</span>
+          <span class="canvas-hint">hover for details · scroll to navigate</span>
+          <span class="node-count" id="ast-count"></span>
+        </div>
+        <div class="svg-wrap">
+          <svg class="ast-svg" id="ast-svg" xmlns="http://www.w3.org/2000/svg">
+            <g id="ast-g"></g>
+          </svg>
+          <div class="tip" id="ast-tip"></div>
+        </div>
+      </div>
+
+      
+      <div class="panel" id="panel-sym">
+        <div id="out-sym">
+          <pre class="code-block">Symbol table will appear here after transpilation.</pre>
+        </div>
+      </div>
+
+   
+      <div class="panel" id="panel-semantic">
+        <pre class="code-block" id="out-semantic">Semantic analysis results will appear here.</pre>
+      </div>
+
+   
+      <div class="panel" id="panel-js">
+        <pre class="code-block" id="out-js">Generated JavaScript will appear here after a successful transpile.</pre>
+      </div>
+
+     
+      <div class="panel" id="panel-executor">
+        <div class="exec-wrap">
+
+          <div class="exec-header">
+            <div class="exec-title">Output Comparison</div>
+            <div class="exec-subtitle">Runs your Python code and the transpiled JS side by side and compares results.</div>
+          </div>
+
+          <div class="exec-inputs-section" id="exec-inputs-section" style="display:none">
+            <div class="exec-inputs-label">Program Inputs</div>
+            <div class="exec-inputs-grid" id="exec-inputs-grid"></div>
+          </div>
+
+          <div class="exec-toolbar">
+            <button class="btn btn-primary" id="btn-exec" onclick="runExecutor()">
+              Run Comparison
+              <span class="spinner" id="exec-spinner"></span>
+            </button>
+            <span class="exec-hint" id="exec-hint">Transpile first, then click Run Comparison</span>
+          </div>
+
+          <div class="exec-results">
+            <div class="exec-col">
+              <div class="exec-col-hdr exec-py-hdr">Python Output</div>
+              <div class="exec-out" id="exec-py-out">Output will appear here.</div>
+            </div>
+            <div class="exec-col">
+              <div class="exec-col-hdr exec-js-hdr">JavaScript Output</div>
+              <div class="exec-out" id="exec-js-out">Output will appear here.</div>
+            </div>
+          </div>
+
+          <div class="exec-verdict" id="exec-verdict" style="display:none"></div>
+
+        </div>
+      </div>
+
+    </div><!-- /panels -->
+
+    <div class="stats-bar">
+      <div class="stat"><span class="stat-lbl">Tokens</span><span class="stat-val" id="s-tokens">—</span></div>
+      <div class="stat"><span class="stat-lbl">Nodes</span><span class="stat-val" id="s-nodes">—</span></div>
+      <div class="stat"><span class="stat-lbl">Symbols</span><span class="stat-val" id="s-syms">—</span></div>
+      <div class="stat"><span class="stat-lbl">JS lines</span><span class="stat-val" id="s-lines">—</span></div>
+      <div class="stat"><span class="stat-lbl">Time</span><span class="stat-val" id="s-time">—</span></div>
+    </div>
+  </div>
+
+</div><!-- /workspace -->
+
+<!-- toast -->
+<div class="toast" id="toast"></div>
+
+<!-- clear modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <h3>Clear the editor?</h3>
+    <p>All code will be removed. You can't undo this.</p>
+    <div class="modal-footer">
+      <button class="mbtn mbtn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="mbtn mbtn-ok"     onclick="confirmClear()">Clear</button>
+    </div>
+  </div>
+</div>
+
+<script src="transpiler.js"></script>
+
+<script>
+
+
+
+const editorEl  = document.getElementById('editor');
+const lineNumEl = document.getElementById('line-nums');
+
+function syncLineNums() {
+  const lines = editorEl.value.split('\n');
+  lineNumEl.innerHTML = lines.map((_, i) => i + 1).join('<br>');
+  document.getElementById('char-count').textContent =
+    `${editorEl.value.length} chars · ${lines.length} line${lines.length !== 1 ? 's' : ''}`;
+}
+editorEl.addEventListener('input', syncLineNums);
+editorEl.addEventListener('scroll', () => { lineNumEl.scrollTop = editorEl.scrollTop; });
+syncLineNums();
+
+editorEl.addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = editorEl.selectionStart, end = editorEl.selectionEnd;
+    editorEl.value = editorEl.value.slice(0, s) + '    ' + editorEl.value.slice(end);
+    editorEl.selectionStart = editorEl.selectionEnd = s + 4;
+    syncLineNums();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault(); runPipelineUI();
+  }
+});
+
+const EXAMPLES = {
+  hello:    `x = "Hello, World!"\nprint(x)`,
+  loop:     `total = 0\nfor i in range(1, 11):\n    total = total + i\nprint(total)`,
+  while:    `n = 1\nwhile n < 100:\n    n = n * 2\nprint(n)`,
+  fib:      `a = 0\nb = 1\nfor i in range(10):\n    c = a + b\n    a = b\n    b = c\nprint(a)`,
+  fizzbuzz: `for i in range(1, 21):\n    if i % 15 == 0:\n        print("FizzBuzz")\n    elif i % 3 == 0:\n        print("Fizz")\n    elif i % 5 == 0:\n        print("Buzz")\n    else:\n        print(i)`,
+  math:     `x = 2 * 3 + 4\ny = 10 // 3\nz = 10 % 3\nw = x + y + z\nprint(w)`,
+  compare:  `x = 42\nif x <= 50:\n    print("small")\nif x >= 40:\n    print("forty or more")\nif x != 0:\n    print("nonzero")`,
+  nested:   `x = 42\nif x > 100:\n    print("large")\nelif x > 50:\n    print("medium")\nelif x > 20:\n    print("small")\nelse:\n    print("tiny")`,
+};
+function loadEx(key) {
+  editorEl.value = EXAMPLES[key] || '';
+  syncLineNums();
+  runPipelineUI();
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(t =>
+    t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`panel-${name}`).classList.add('active');
+}
+
+function clearAll() { document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function confirmClear() {
+  editorEl.value = ''; syncLineNums(); closeModal();
+  resetOutput();
+  setStatus('', 'Editor cleared — ready to go again');
+}
+
+let _toastT;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_toastT);
+  _toastT = setTimeout(() => el.classList.remove('show'), 2300);
+}
+
+function setStatus(state, msg) {
+  document.getElementById('st-dot').className = 'status-dot' + (state ? ' ' + state : '');
+  document.getElementById('st-text').textContent = msg;
+}
+
+function copyJS() {
+  const el  = document.getElementById('out-js');
+  const txt = el.textContent;
+  if (!txt || txt.startsWith('Generated')) { toast('Nothing to copy yet.'); return; }
+  navigator.clipboard.writeText(txt).then(() => toast('✓ JavaScript copied to clipboard'));
+}
+
+function resetOutput() {
+  document.getElementById('out-tokens').textContent =
+    'Write some Python code on the left, then click ▶ Transpile to see the token stream here.';
+  document.getElementById('out-tokens').className = 'code-block';
+  document.getElementById('ast-g').innerHTML = '';
+  document.getElementById('out-sym').innerHTML =
+    '<pre class="code-block">Symbol table will appear here after transpilation.</pre>';
+  document.getElementById('out-semantic').textContent =
+    'Semantic analysis results will appear here.';
+  document.getElementById('out-semantic').className = 'code-block';
+  document.getElementById('out-js').textContent =
+    'Generated JavaScript will appear here after a successful transpile.';
+  document.getElementById('out-js').className = 'code-block';
+  ['s-tokens','s-nodes','s-syms','s-lines','s-time'].forEach(id =>
+    document.getElementById(id).textContent = '—');
+  document.querySelectorAll('.tab-btn').forEach(t =>
+    t.classList.remove('ok', 'err'));
+  document.getElementById('warn-banner').classList.remove('show');
+  document.getElementById('live-badge').style.display = 'none';
+  document.getElementById('ast-count').textContent = '';
+}
+
+function renderSymTable(tbl) {
+  if (!tbl || !Object.keys(tbl).length)
+    return '<pre class="code-block">No symbols found.</pre>';
+  const rows = Object.entries(tbl).map(([name, type]) =>
+    `<tr>
+       <td style="font-family:var(--mono)">${name}</td>
+       <td><span class="tag tag-${type}">${type}</span></td>
+     </tr>`
+  ).join('');
+  return `<table class="sym-tbl">
+    <thead><tr><th>Name</th><th>Kind</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function hlJS(code) {
+  return code
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\b(let|const|var|if|else|while|for|return|function)\b/g,
+      "<span class='kw'>$1</span>")
+    .replace(/\b(console\.log|Math\.\w+|parseFloat|String|prompt|typeof)\b/g,
+      "<span class='fn'>$1</span>")
+    .replace(/"([^"]*)"/g, "<span class='str'>\"$1\"</span>")
+    .replace(/\b(\d+\.?\d*)\b/g, "<span class='num'>$1</span>")
+    .replace(/(===|!==|&&|\|\||&lt;=|&gt;=|&lt;|&gt;)/g,
+      "<span class='op'>$1</span>");
+}
+function countNodes(n) {
+  if (!n || typeof n !== 'object') return 0;
+  let c = 1;
+  ['statements','body','args'].forEach(k => {
+    if (Array.isArray(n[k])) n[k].forEach(ch => { c += countNodes(ch); });
+  });
+  ['value','expression','condition','left','right','start','stop','step'].forEach(k => {
+    if (n[k]) c += countNodes(n[k]);
+  });
+  return c;
+}
+const NODE_COLORS = {
+  Program:'#4c72c4', FunctionDef:'#e05c9a', ClassDef:'#26a69a', Lambda:'#00897b',
+  Assignment:'#8b5cf6', ComplexAssignment:'#7c5cbf', AugmentedAssignment:'#8d6ab8',
+  Print:'#10b981', Return:'#e57373', Raise:'#ef5350', Delete:'#d84315',
+  Assert:'#ff8a65', Pass:'#90a4ae', Break:'#78909c', Continue:'#546e7a',
+  Global:'#a1887f', Nonlocal:'#8d6e63', Import:'#78909c', FromImport:'#607d8b',
+  If:'#ef4444', While:'#ec4899', For:'#6366f1', ForIn:'#6a5fbf',
+  With:'#5c7abf', TryExcept:'#c0784a', ExceptHandler:'#bf6a3a',
+  BinaryOp:'#f59e0b', UnaryOp:'#c47820', BoolOp:'#b86820', Ternary:'#e09030',
+  FunctionCall:'#06b6d4', MethodCall:'#2a9aac', Attribute:'#5b8fbf',
+  Subscript:'#4a7faf', ListComp:'#43a869',
+  NumberNode:'#22c55e', StringNode:'#eab308', FStringNode:'#b89020',
+  BoolNode:'#5b9b7a', NoneNode:'#9e9e9e',
+  ListLiteral:'#4caf7a', DictLiteral:'#bf7040', TupleLiteral:'#7a8fbf',
+  SetLiteral:'#bf5080', Identifier:'#64748b', Slice:'#8899bb',
+};
+const OP_SYM = {
+  PLUS:'+', MINUS:'-', MULTIPLY:'×', DIVIDE:'/',
+  FLOOR_DIVIDE:'//', MODULO:'%',
+  DOUBLE_EQUALS:'==', NOT_EQUALS:'!=',
+  LESS_THAN:'<', GREATER_THAN:'>', LESS_EQUAL:'<=', GREATER_EQUAL:'>=',
+};
+const NW=120, NH=40, HG=18, VG=54;
+
+function astKids(n) {
+  if (!n) return [];
+  const t = n.constructor.name;
+  if (t==='Program')    return n.statements||[];
+  if (t==='FunctionDef') return n.body||[];
+  if (t==='ClassDef')   return n.body||[];
+  if (t==='Lambda')     return n.body ? [n.body] : [];
+  // Statements
+  if (t==='Assignment')          return n.value ? [n.value] : [];
+  if (t==='ComplexAssignment')   return [n.target, n.value].filter(Boolean);
+  if (t==='AugmentedAssignment') return [n.target, n.value].filter(Boolean);
+  if (t==='Print')      return n.expression ? [n.expression] : [];
+  if (t==='Return')     return n.value ? [n.value] : [];
+  if (t==='Raise')      return n.exc ? [n.exc] : [];
+  if (t==='Delete')     return n.targets||[];
+  if (t==='Assert')     return [n.test, n.msg].filter(Boolean);
+  // Control flow
+  if (t==='If') {
+    let k = [n.condition, ...(n.body||[])];
+    (n.elif_clauses||[]).forEach(([c,b]) => { k.push(c, ...(b||[])); });
+    k.push(...(n.else_body||[]));
+    return k;
+  }
+  if (t==='While')  return [n.condition, ...(n.body||[])];
+  if (t==='For') {
+    const p = [n.start, n.stop];
+    if (n.step) p.push(n.step);
+    return [...p, ...(n.body||[])];
+  }
+  if (t==='ForIn')  return [n.iterable, ...(n.body||[])];
+  if (t==='With')   return [n.expr, ...(n.body||[])];
+  if (t==='TryExcept')
+    return [...(n.body||[]), ...(n.handlers||[]), ...(n.else_body||[]), ...(n.final_body||[])];
+  if (t==='ExceptHandler') return n.body||[];
+  // Expressions
+  if (t==='BinaryOp')     return [n.left, n.right].filter(Boolean);
+  if (t==='UnaryOp')      return n.operand ? [n.operand] : [];
+  if (t==='BoolOp')       return n.values||[];
+  if (t==='Ternary')      return [n.test, n.body, n.orelse].filter(Boolean);
+  if (t==='FunctionCall') return n.args||[];
+  if (t==='MethodCall')   return [n.obj, ...(n.args||[])].filter(Boolean);
+  if (t==='Attribute')    return n.value ? [n.value] : [];
+  if (t==='Subscript')    return [n.value, n.index].filter(Boolean);
+  if (t==='Slice')        return [n.lower, n.upper, n.step].filter(Boolean);
+  if (t==='ListComp')     return [n.elt, n.iter_, n.cond].filter(Boolean);
+  // Literals with children
+  if (['ListLiteral','TupleLiteral','SetLiteral'].includes(t)) return n.elements||[];
+  if (t==='DictLiteral') return (n.pairs||[]).flat();
+  return [];
+}
+function astLabel(n) {
+  const t = n.constructor.name;
+  // Structure
+  if (t==='Program')    return ['Program',''];
+  if (t==='FunctionDef') return ['def', n.name+'('+(n.params||[]).join(', ')+')'];
+  if (t==='ClassDef')   return ['class', n.name+((n.bases&&n.bases.length)?`(${n.bases.join(', ')})`:'' )];
+  if (t==='Lambda')     return ['lambda', (n.params||[]).join(', ')];
+  // Statements
+  if (t==='Assignment')          return ['Assign', typeof n.name==='string' ? n.name : ''];
+  if (t==='ComplexAssignment')   return ['Assign', ''];
+  if (t==='AugmentedAssignment') return ['AugAssign', n.op?.name||''];
+  if (t==='Print')      return ['Print', ''];
+  if (t==='Return')     return ['Return', ''];
+  if (t==='Raise')      return ['Raise', ''];
+  if (t==='Delete')     return ['Delete', ''];
+  if (t==='Assert')     return ['Assert', ''];
+  if (t==='Pass')       return ['Pass', ''];
+  if (t==='Break')      return ['Break', ''];
+  if (t==='Continue')   return ['Continue', ''];
+  if (t==='Global')     return ['Global', (n.names||[]).join(', ')];
+  if (t==='Nonlocal')   return ['Nonlocal', (n.names||[]).join(', ')];
+  if (t==='Import')     return ['Import', ''];
+  if (t==='FromImport') return ['From', n.module||''];
+  // Control flow
+  if (t==='If')          return ['If', ''];
+  if (t==='While')       return ['While', ''];
+  if (t==='For')         return ['For', Array.isArray(n.var) ? n.var.join(', ') : (n.var||'')];
+  if (t==='ForIn')       return ['ForIn', Array.isArray(n.var) ? n.var.join(', ') : (n.var||'')];
+  if (t==='With')        return ['With', n.alias ? `as ${n.alias}` : ''];
+  if (t==='TryExcept')   return ['Try', ''];
+  if (t==='ExceptHandler') return ['Except', n.exc_type||(n.name?`as ${n.name}`:'')];
+  // Expressions
+  if (t==='BinaryOp')    return ['BinaryOp', OP_SYM[n.op?.name]||n.op?.name||'?'];
+  if (t==='UnaryOp')     return ['UnaryOp', String(n.op||'')];
+  if (t==='BoolOp')      return ['BoolOp', String(n.op||'')];
+  if (t==='Ternary')     return ['Ternary', ''];
+  if (t==='FunctionCall') return ['Call', typeof n.name==='string' ? n.name : 'call'];
+  if (t==='MethodCall')  return ['MethodCall', `.${n.method}`];
+  if (t==='Attribute')   return ['Attr', `.${n.attr}`];
+  if (t==='Subscript')   return ['Subscript', ''];
+  if (t==='Slice')       return ['Slice', ''];
+  if (t==='ListComp')    return ['ListComp', ''];
+  // Literals
+  if (t==='NumberNode')  return ['Number', String(n.value)];
+  if (t==='StringNode')  return ['String', `"${String(n.value).slice(0,10)}"`];
+  if (t==='FStringNode') return ['FString', `f"${String(n.value).slice(0,10)}"`];
+  if (t==='BoolNode')    return ['Bool', String(n.value)];
+  if (t==='NoneNode')    return ['None', ''];
+  if (t==='ListLiteral') return ['List', `${(n.elements||[]).length} items`];
+  if (t==='DictLiteral') return ['Dict', `${(n.pairs||[]).length} pairs`];
+  if (t==='TupleLiteral') return ['Tuple', `${(n.elements||[]).length} items`];
+  if (t==='SetLiteral')  return ['Set', `${(n.elements||[]).length} items`];
+  if (t==='Identifier')  return ['Ident', n.name];
+  return [t, ''];
+}
+function astTip(n) {
+  const t=n.constructor.name;
+  const lines=[`Type:  ${t}`];
+  if (t==='FunctionDef') { lines.push(`Name:  ${n.name}`); lines.push(`Params: ${(n.params||[]).join(', ')||'(none)'}`); }
+  else if (t==='ClassDef')  { lines.push(`Name:  ${n.name}`); if(n.bases?.length) lines.push(`Bases: ${n.bases.join(', ')}`); }
+  else if (t==='Assignment'||t==='FunctionCall') lines.push(`Name:  ${n.name}`);
+  else if (t==='MethodCall') lines.push(`Method: .${n.method}`);
+  else if (t==='Attribute')  lines.push(`Attr:  .${n.attr}`);
+  else if (t==='NumberNode'||t==='StringNode'||t==='FStringNode'||t==='BoolNode') lines.push(`Value: ${n.value}`);
+  else if (t==='Identifier') lines.push(`Name:  ${n.name}`);
+  else if (t==='BinaryOp')   lines.push(`Op:    ${OP_SYM[n.op?.name]||n.op?.name} (${n.op?.name})`);
+  else if (t==='UnaryOp')    lines.push(`Op:    ${n.op}`);
+  else if (t==='BoolOp')     lines.push(`Op:    ${n.op}`);
+  else if (t==='AugmentedAssignment') lines.push(`Op:    ${n.op?.name||n.op}`);
+  else if (t==='For'||t==='ForIn') lines.push(`Var:   ${Array.isArray(n.var)?n.var.join(', '):n.var}`);
+  else if (t==='ExceptHandler') { if(n.exc_type) lines.push(`Type:  ${n.exc_type}`); if(n.name) lines.push(`As:    ${n.name}`); }
+  else if (t==='FromImport') lines.push(`Module: ${n.module}`);
+  else if (t==='Global'||t==='Nonlocal') lines.push(`Names: ${(n.names||[]).join(', ')}`);
+  return lines.join('\n');
+}
+
+class LN {
+  constructor(ast) {
+    this.ast=ast; this.kids=astKids(ast).map(c=>new LN(c));
+    this.w=0; this.x=0; this.y=0;
+  }
+  measure() {
+    this.kids.forEach(k=>k.measure());
+    this.w = this.kids.length
+      ? Math.max(NW, this.kids.reduce((s,k)=>s+k.w,0)+HG*(this.kids.length-1))
+      : NW;
+  }
+  placeX(left=0) {
+    if(!this.kids.length){ this.x=left+this.w/2; return; }
+    let cx=left;
+    this.kids.forEach(k=>{ k.placeX(cx); cx+=k.w+HG; });
+    this.x=(this.kids[0].x+this.kids[this.kids.length-1].x)/2;
+  }
+  flatten(y=0,out=[]){
+    this.y=y; out.push(this);
+    this.kids.forEach(k=>k.flatten(y+NH+VG,out));
+    return out;
+  }
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function el(tag,attrs={},parent){
+  const e=document.createElementNS(SVG_NS,tag);
+  Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));
+  if(parent)parent.appendChild(e);
+  return e;
+}
+
+function drawTree(svgEl, gEl, tipEl, root, isOpt) {
+  gEl.innerHTML='';
+  if(!root){
+    const t=el('text',{x:20,y:36,fill:'#8a93a6','font-family':'Inter','font-size':'13'},gEl);
+    t.textContent='Nothing to show yet — run a transpile first.';
+    return 0;
+  }
+  const lay=new LN(root);
+  lay.measure(); lay.placeX(20);
+  const nodes=lay.flatten(20);
+  const maxX=Math.max(...nodes.map(n=>n.x+NW/2))+30;
+  const maxY=Math.max(...nodes.map(n=>n.y+NH))+30;
+
+  svgEl.setAttribute('width',  maxX);
+  svgEl.setAttribute('height', maxY);
+  svgEl.setAttribute('viewBox',`0 0 ${maxX} ${maxY}`);
+
+  const ec='#94a3b8';
+
+ 
+  nodes.forEach(n=>n.kids.forEach(k=>{
+    const x1=n.x,y1=n.y+NH,x2=k.x,y2=k.y,my=(y1+y2)/2;
+    el('path',{
+      d:`M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`,
+      class:'edge',stroke:ec
+    },gEl);
+  }));
+
+  nodes.forEach(n=>{
+    const col=NODE_COLORS[n.ast.constructor.name]||'#64748b';
+    const rx=n.x-NW/2, ry=n.y;
+    const g=el('g',{transform:`translate(${rx},${ry})`},gEl);
+    g.style.cursor='pointer';
+
+    el('rect',{x:2,y:3,width:NW,height:NH,rx:7,ry:7,fill:'rgba(0,0,0,.09)'},g);
+
+    el('rect',{x:0,y:0,width:NW,height:NH,rx:7,ry:7,fill:col,class:'node-bg'},g);
+
+    const [top,sub]=astLabel(n.ast), cx=NW/2;
+    if(sub){
+      const t1=el('text',{x:cx,y:13,'text-anchor':'middle','dominant-baseline':'middle',class:'node-label'},g);
+      t1.textContent=top;
+      const t2=el('text',{x:cx,y:27,'text-anchor':'middle','dominant-baseline':'middle',class:'node-sub'},g);
+      t2.textContent=sub.length>13?sub.slice(0,12)+'…':sub;
+    } else {
+      const t1=el('text',{x:cx,y:NH/2,'text-anchor':'middle','dominant-baseline':'middle',class:'node-label'},g);
+      t1.textContent=top;
+    }
+
+    g.addEventListener('mouseenter', ()=>{
+      tipEl.textContent=astTip(n.ast);
+      tipEl.style.display='block';
+    });
+    g.addEventListener('mousemove', e=>{
+      const box=tipEl.parentElement.getBoundingClientRect();
+      let lx=e.clientX-box.left+14, ty=e.clientY-box.top-6;
+      if(lx+170>box.width) lx=e.clientX-box.left-170;
+      tipEl.style.left=lx+'px'; tipEl.style.top=ty+'px';
+    });
+    g.addEventListener('mouseleave', ()=>{ tipEl.style.display='none'; });
+    gEl.appendChild(g);
+  });
+
+  return nodes.length;
+}
+
+async function runPipelineUI() {
+  const src = editorEl.value.trim();
+  if (!src) {
+    setStatus('err', 'Nothing to transpile — write some Python first');
+    toast('Write some Python code first!');
+    return;
+  }
+
+  resetOutput();
+  setStatus('', 'Transpiling…');
+  document.getElementById('btn-run').disabled = true;
+  document.getElementById('spinner').style.display = 'inline-block';
+
+  const t0 = performance.now();
+
+  const r       = await runPipeline(src);
+  const elapsed = (performance.now()-t0).toFixed(1);
+
+  document.getElementById('btn-run').disabled = false;
+  document.getElementById('spinner').style.display = 'none';
+
+    if (r.unsupported.length) {
+      const b = document.getElementById('warn-banner');
+      b.classList.add('show');
+      document.getElementById('warn-list').textContent =
+        ' ' + r.unsupported.map(f=>`"${f}" may not run in JS shim`).join(', ') + '.';
+    }
+    
+    if (r.error) {
+      setStatus('err', `${r.error.stage} error`);
+      const tokEl = document.getElementById('out-tokens');
+      const errTxt = `[${r.error.stage} Error]\n${r.error.message}`;
+      tokEl.textContent = r.tokens ? formatTokens(r.tokens) + '\n\n' + errTxt : errTxt;
+      tokEl.className = 'code-block err';
+      tabMark('tokens','err');
+      document.getElementById('s-time').textContent = elapsed+'ms';
+      if(r.tokens) document.getElementById('s-tokens').textContent =
+        r.tokens.filter(t=>t.type!=='EOF').length;
+      return;
+    }
+
+    setStatus('ok', `Done in ${elapsed}ms — ${r.tokens.length-1} tokens`);
+    document.getElementById('live-badge').style.display = 'inline-flex';
+
+    const tokEl = document.getElementById('out-tokens');
+    tokEl.textContent = formatTokens(r.tokens);
+    tokEl.className = 'code-block ok';
+    tabMark('tokens','ok');
+    const n1 = drawTree(
+      document.getElementById('ast-svg'),
+      document.getElementById('ast-g'),
+      document.getElementById('ast-tip'),
+      r.ast, false
+    );
+    document.getElementById('ast-count').textContent = `${n1} nodes`;
+    tabMark('ast','ok');
+    document.getElementById('out-sym').innerHTML = renderSymTable(r.symbolTable);
+    tabMark('sym','ok');
+    const semEl = document.getElementById('out-semantic');
+    semEl.textContent = '✔ No semantic errors found.\n\nAll variables are assigned before use.\nNo type mismatches detected.';
+    semEl.className = 'code-block ok';
+    tabMark('semantic','ok');
+
+    const jsEl = document.getElementById('out-js');
+    jsEl.innerHTML = hlJS(r.jsCode);
+    jsEl.className = 'code-block ok';
+    tabMark('js','ok');
+    const syms  = r.symbolTable ? Object.keys(r.symbolTable).length : 0;
+    const lines = r.jsCode      ? r.jsCode.split('\n').length        : 0;
+    document.getElementById('s-tokens').textContent = r.tokens.filter(t=>t.type!=='EOF').length;
+    document.getElementById('s-nodes').textContent  = countNodes(r.ast);
+    document.getElementById('s-syms').textContent   = syms;
+    document.getElementById('s-lines').textContent  = lines;
+    document.getElementById('s-time').textContent   = elapsed+'ms';
+
+    setupExecutor(src);
+    tabMark('executor', 'ok');
+}
+
+function tabMark(name, state) {
+  const t = document.querySelector(`[data-tab="${name}"]`);
+  if (t) { t.classList.remove('ok','err'); t.classList.add(state); }
+}
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); runPipelineUI(); }
+  if (e.key==='Escape') closeModal();
+});
+
+
+let _lastSrc = '';
+
+function setupExecutor(sourceCode) {
+  _lastSrc = sourceCode;
+  const grid    = document.getElementById('exec-inputs-grid');
+  const section = document.getElementById('exec-inputs-section');
+  const hint    = document.getElementById('exec-hint');
+  grid.innerHTML = '';
+
+  const prompts = extractInputPrompts(sourceCode);
+  if (prompts.length) {
+    section.style.display = 'block';
+    prompts.forEach((label, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'exec-input-wrap';
+      wrap.innerHTML = `
+        <label class="exec-input-label">${label || 'Input ' + (i + 1)}</label>
+        <input class="exec-input-field" id="exec-inp-${i}" type="text" placeholder="value..." />
+      `;
+      grid.appendChild(wrap);
+    });
+    hint.textContent = `${prompts.length} input(s) detected — fill them in and click Run`;
+  } else {
+    section.style.display = 'none';
+    hint.textContent = 'Click Run Comparison to execute';
+  }
+
+  const pyOut = document.getElementById('exec-py-out');
+  const jsOut = document.getElementById('exec-js-out');
+  pyOut.textContent = 'Output will appear here.';
+  jsOut.textContent = 'Output will appear here.';
+  pyOut.className = 'exec-out';
+  jsOut.className = 'exec-out';
+  document.getElementById('exec-verdict').style.display = 'none';
+}
+
+function extractInputPrompts(src) {
+  const re = /\binput\s*\(([^)]*)\)/g;
+  const out = [];
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    const inner = m[1].trim();
+    const sm    = inner.match(/^["'](.+?)["']$/);
+    out.push(sm ? sm[1].replace(/:\s*$/, '').trim() : null);
+  }
+  return out;
+}
+
+async function runExecutor() {
+  if (!_lastSrc) {
+    toast('Transpile your code first.');
+    return;
+  }
+
+  const btn     = document.getElementById('btn-exec');
+  const spinner = document.getElementById('exec-spinner');
+  const pyOut   = document.getElementById('exec-py-out');
+  const jsOut   = document.getElementById('exec-js-out');
+  const verdict = document.getElementById('exec-verdict');
+
+  btn.disabled       = true;
+  spinner.style.display = 'inline-block';
+  pyOut.textContent  = 'Running...';
+  jsOut.textContent  = 'Running...';
+  pyOut.className    = 'exec-out';
+  jsOut.className    = 'exec-out';
+  verdict.style.display = 'none';
+
+  // collect user inputs from the fields
+  const inputs = [];
+  let i = 0;
+  while (document.getElementById(`exec-inp-${i}`)) {
+    inputs.push(document.getElementById(`exec-inp-${i}`).value);
+    i++;
+  }
+
+  let result;
+  try {
+    const resp = await fetch('/api/execute', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ source: _lastSrc, inputs }),
+    });
+    result = await resp.json();
+  } catch (err) {
+    pyOut.textContent = '[Network Error] Could not reach the server.';
+    pyOut.className   = 'exec-out exec-err';
+    jsOut.textContent = '';
+    btn.disabled      = false;
+    spinner.style.display = 'none';
+    return;
+  }
+
+  btn.disabled       = false;
+  spinner.style.display = 'none';
+
+  const pyText = result.py_output || '';
+  const jsText = result.js_output || '';
+  const match  = result.match;
+
+  pyOut.textContent = pyText || '(no output)';
+  jsOut.textContent = jsText || '(no output)';
+
+  if (pyText.startsWith('[') && (pyText.includes('Error') || pyText.includes('error'))) {
+    pyOut.className = 'exec-out exec-err';
+  } else {
+    pyOut.className = 'exec-out exec-ok';
+  }
+  if (jsText.startsWith('[') && (jsText.includes('Error') || jsText.includes('error'))) {
+    jsOut.className = 'exec-out exec-err';
+  } else {
+    jsOut.className = 'exec-out exec-ok';
+  }
+
+  verdict.style.display = 'flex';
+  if (match) {
+    verdict.className   = 'exec-verdict exec-verdict-match';
+    verdict.innerHTML   = '<span class="verdict-icon">&#10004;</span> Both outputs match — transpilation is correct!';
+  } else {
+    verdict.className   = 'exec-verdict exec-verdict-mismatch';
+    verdict.innerHTML   = '<span class="verdict-icon">&#10008;</span> Outputs do not match — check the transpilation logic.';
+  }
+}
+</script>
+</body>
+</html>

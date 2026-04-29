@@ -182,3 +182,13 @@ def main():
     print("Sorted List:", sort_list(my_list))
 
 main()
+
+
+
+
+num = int(input("Enter number: "))
+
+if num % 2 == 0:
+    print("Even")
+else:
+    print("Odd")
