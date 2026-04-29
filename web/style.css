@@ -38,10 +38,6 @@ body {
   overflow: hidden;
 }
 
-/* ─── TOPBAR
-   Fixed header with logo, keyboard shortcut hint,
-   Flask badge, user chip and sign-out button.
-   ─────────────────────────────────────────────── */
 .topbar {
   height: 52px;
   background: var(--surface);
@@ -197,10 +193,7 @@ body {
 }
 @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:.3 } }
 
-/* ─── WORKSPACE
-   Two-column grid. Left = editor, right = output panels.
-   Collapses to a stacked layout on narrow screens.
-   ─────────────────────────────────────────────── */
+
 .workspace {
   flex: 1;
   display: grid;
@@ -209,10 +202,7 @@ body {
   gap: 0;
 }
 
-/* ─── EDITOR SIDE
-   Contains the file header, line-numbered textarea,
-   quick-example chips and the run/clear/copy toolbar.
-   ─────────────────────────────────────────────── */
+
 .editor-side {
   display: flex;
   flex-direction: column;
@@ -286,7 +276,6 @@ body {
 #editor::selection { background: rgba(59,91,219,.12); }
 #editor::placeholder { color: var(--muted); }
 
-/* examples */
 .examples-strip {
   background: var(--surface);
   border-top: 1px solid var(--border);
@@ -324,7 +313,6 @@ body {
   color: var(--accent);
 }
 
-/* toolbar */
 .toolbar {
   border-top: 1px solid var(--border);
   background: var(--surface);
@@ -423,7 +411,6 @@ body {
 .tab-btn.ok  .tab-pip { display: block; background: var(--green); }
 .tab-btn.err .tab-pip { display: block; background: var(--red); }
 
-/* panels */
 .panels { flex: 1; overflow: hidden; position: relative; }
 .panel { display: none; padding: 16px; height: 100%; overflow: auto; }
 .panel.active { display: block; }
@@ -446,7 +433,6 @@ pre.code-block {
 pre.code-block.ok  { border-color: #b2f2bb; background: var(--green-lt); color: var(--text); }
 pre.code-block.err { border-color: #fca5a5; background: var(--red-lt); color: var(--red); }
 
-/* unsupported warning */
 .warn-banner {
   display: none;
   background: var(--amber-lt);
@@ -460,7 +446,6 @@ pre.code-block.err { border-color: #fca5a5; background: var(--red-lt); color: va
 .warn-banner.show { display: block; }
 .warn-banner strong { display: block; margin-bottom: 3px; }
 
-/* symbol table */
 .sym-tbl { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
 .sym-tbl th {
   text-align: left;
@@ -490,7 +475,6 @@ pre.code-block.err { border-color: #fca5a5; background: var(--red-lt); color: va
 .tag-number   { background: #fef9c3; color: #92400e; }
 .tag-string   { background: #dcfce7; color: #166534; }
 
-/* js highlight */
 .kw  { color: #7c3aed; font-weight: 700; }
 .fn  { color: #0369a1; }
 .str { color: #15803d; }
@@ -540,7 +524,6 @@ pre.code-block.err { border-color: #fca5a5; background: var(--red-lt); color: va
 .svg-wrap::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
 .svg-wrap::-webkit-scrollbar-corner { background: transparent; }
 
-/* The SVG grows to fit its content; the wrapper scrolls around it */
 .ast-svg {
   display: block;
   cursor: default;
@@ -548,7 +531,6 @@ pre.code-block.err { border-color: #fca5a5; background: var(--red-lt); color: va
   min-height: 100%;
 }
 
-/* svg elements */
 .node-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,.1)); }
 .node-bg { transition: filter .12s; }
 .node-label { fill: #fff; font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 11px; pointer-events: none; }
@@ -557,7 +539,6 @@ pre.code-block.err { border-color: #fca5a5; background: var(--red-lt); color: va
 .opt-ring { fill: none; stroke: var(--amber); stroke-width: 2; }
 .opt-star { fill: var(--amber); font-size: 9px; font-weight: 700; }
 
-/* tooltip */
 .tip {
   position: absolute;
   background: #1e2433;
@@ -644,7 +625,6 @@ pre.code-block.err { border-color: #fca5a5; background: var(--red-lt); color: va
   .editor-side { border-right: none; border-bottom: 1px solid var(--border); }
   .topbar-hint { display: none; }
 }
-/* ─── EXECUTOR PANEL ──────────────────────────────────────── */
 .exec-wrap {
   display: flex;
   flex-direction: column;
@@ -799,7 +779,6 @@ pre.code-block.err { border-color: #fca5a5; background: var(--red-lt); color: va
   font-size: 16px;
 }
 
-/* tag types for symbol table */
 .tag-class     { background: #e0f2fe; color: #075985; }
 .tag-parameter { background: #fef3c7; color: #92400e; }
 .tag-import    { background: #f3e8ff; color: #6b21a8; }
