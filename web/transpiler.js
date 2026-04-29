@@ -287,27 +287,34 @@ function formatTokens(tokens) {
 }
 
 
-function formatSymbolTable(table) {
-  if (!table || !Object.keys(table).length) return 'Empty symbol table.';
-  const rows = Object.entries(table)
-    .sort(([, a], [, b]) => a.localeCompare(b) || 0)
-    .map(([name, kind]) => `${name.padEnd(30)} ${kind}`);
-  return `${'NAME'.padEnd(30)} TYPE\n${'-'.repeat(40)}\n${rows.join('\n')}`;
+
+function reviveKwargs(kwargs) {
+  if (!kwargs || typeof kwargs !== 'object') return {};
+  const out = {};
+  for (const [k, v] of Object.entries(kwargs)) {
+    out[k] = reviveAST(v);
+  }
+  return out;
 }
 
 
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    Program, NumberNode, StringNode, FStringNode, BoolNode, NoneNode,
-    Identifier, Attribute, Subscript, Slice,
-    ListLiteral, DictLiteral, TupleLiteral, SetLiteral, ListComp,
-    BinaryOp, UnaryOp, BoolOp, Ternary, Lambda, FunctionCall, MethodCall,
-    Assignment, ComplexAssignment, AugmentedAssignment,
-    Print, Return, Raise, Delete, Assert, Pass, Break, Continue,
-    Global, Nonlocal,
-    If, While, For, ForIn, With,
-    FunctionDef, ClassDef, TryExcept, ExceptHandler,
-    Import, FromImport,
-    reviveAST, runPipeline, formatTokens, formatSymbolTable,
-  };
-}
+async function runPipeline(sourceCode) {
+  let raw;
+  try {
+    const resp = await fetch('/api/transpile', {
+      method:      'POST',
+      headers:     { 'Content-Type': 'application/json' },
+      body:        JSON.stringify({ source: sourceCode }),
+      credentials: 'include',
+    });
+
+    if (!resp.ok) {
+      return {
+        tokens: null, ast: null, symbolTable: null,
+        jsCode: null,
+        unsupported: [], error: {
+          stage:   'Network',
+          message: `Server returned ${resp.status} ${resp.statusText}`,
+        },
+      };
+    }
