@@ -1,13 +1,11 @@
 class ASTNode {}
 
-// Literals
 class NumberNode   extends ASTNode { constructor(v)        { super(); this.value = v; } }
 class StringNode   extends ASTNode { constructor(v)        { super(); this.value = v; } }
 class FStringNode  extends ASTNode { constructor(v)        { super(); this.value = v; } }
 class BoolNode     extends ASTNode { constructor(v)        { super(); this.value = v; } }
 class NoneNode     extends ASTNode { constructor()         { super(); } }
 
-// Names & access
 class Identifier   extends ASTNode { constructor(n)        { super(); this.name = n; } }
 class Attribute    extends ASTNode { constructor(v, a)     { super(); this.value = v; this.attr = a; } }
 class Subscript    extends ASTNode { constructor(v, i)     { super(); this.value = v; this.index = i; } }
@@ -15,7 +13,6 @@ class Slice        extends ASTNode {
   constructor(lower, upper, step) { super(); this.lower = lower; this.upper = upper; this.step = step; }
 }
 
-// Collections
 class ListLiteral  extends ASTNode { constructor(els)      { super(); this.elements = els; } }
 class DictLiteral  extends ASTNode { constructor(pairs)    { super(); this.pairs = pairs; } }
 class TupleLiteral extends ASTNode { constructor(els)      { super(); this.elements = els; } }
@@ -24,7 +21,6 @@ class ListComp     extends ASTNode {
   constructor(elt, target, iter_, cond) { super(); this.elt = elt; this.target = target; this.iter_ = iter_; this.cond = cond; }
 }
 
-// Expressions
 class BinaryOp     extends ASTNode { constructor(l, op, r) { super(); this.left = l; this.op = op; this.right = r; } }
 class UnaryOp      extends ASTNode { constructor(op, o)    { super(); this.op = op; this.operand = o; } }
 class BoolOp       extends ASTNode { constructor(op, vals) { super(); this.op = op; this.values = vals; } }
@@ -52,7 +48,6 @@ class Continue     extends ASTNode { constructor()         { super(); } }
 class Global       extends ASTNode { constructor(n)        { super(); this.names = n; } }
 class Nonlocal     extends ASTNode { constructor(n)        { super(); this.names = n; } }
 
-// Control flow
 class If extends ASTNode {
   constructor(cond, body, elifs = [], elseBody = []) {
     super();
@@ -77,7 +72,6 @@ class With extends ASTNode {
   constructor(expr, alias, body) { super(); this.expr = expr; this.alias = alias; this.body = body; }
 }
 
-// Definitions
 class FunctionDef extends ASTNode {
   constructor(name, params, body, defaults = {}, vararg = null, kwarg = null, decorators = []) {
     super();
@@ -100,7 +94,6 @@ class ClassDef extends ASTNode {
   }
 }
 
-// Exception handling
 class TryExcept extends ASTNode {
   constructor(body, handlers, elseBody, finalBody) {
     super();
@@ -116,36 +109,33 @@ class ExceptHandler extends ASTNode {
   }
 }
 
-// Imports
+
 class Import     extends ASTNode { constructor(n)    { super(); this.names = n; } }
 class FromImport extends ASTNode { constructor(m, n) { super(); this.module = m; this.names = n; } }
 
 
-// ── AST reviver ──────────────────────────────────────────────
 function reviveAST(obj) {
   if (!obj || typeof obj !== 'object') return obj;
   if (Array.isArray(obj)) return obj.map(reviveAST);
 
-  const r = reviveAST;   // shorthand
+  const r = reviveAST;   
 
   switch (obj.type) {
     case 'Program':
       return new Program((obj.statements || []).map(r));
 
-    // ── Literals ────────────────────────────────────────────
     case 'Number':     case 'NumberNode':   return new NumberNode(obj.value);
     case 'String':     case 'StringNode':   return new StringNode(obj.value);
     case 'FString':    case 'FStringNode':  return new FStringNode(obj.value);
     case 'BoolLiteral':                     return new BoolNode(obj.value);
     case 'NoneLiteral':                     return new NoneNode();
 
-    // ── Names ───────────────────────────────────────────────
     case 'Identifier':  return new Identifier(obj.name);
     case 'Attribute':   return new Attribute(r(obj.value), obj.attr);
     case 'Subscript':   return new Subscript(r(obj.value), r(obj.index));
     case 'Slice':       return new Slice(r(obj.lower), r(obj.upper), r(obj.step));
 
-    // ── Collections ─────────────────────────────────────────
+  
     case 'ListLiteral':  return new ListLiteral((obj.elements || []).map(r));
     case 'DictLiteral':
       return new DictLiteral((obj.pairs || []).map(([k, v]) => [r(k), r(v)]));
@@ -154,7 +144,7 @@ function reviveAST(obj) {
     case 'ListComp':
       return new ListComp(r(obj.elt), obj.target, r(obj.iter_), obj.cond ? r(obj.cond) : null);
 
-    // ── Expressions ─────────────────────────────────────────
+    
     case 'BinaryOp':    return new BinaryOp(r(obj.left), obj.op, r(obj.right));
     case 'UnaryOp':     return new UnaryOp(obj.op, r(obj.operand));
     case 'BoolOp':      return new BoolOp(obj.op, (obj.values || []).map(r));
@@ -167,7 +157,7 @@ function reviveAST(obj) {
       return new MethodCall(r(obj.obj), obj.method, (obj.args || []).map(r),
                             reviveKwargs(obj.kwargs));
 
-    // ── Statements ──────────────────────────────────────────
+  
     case 'Assignment':        return new Assignment(obj.name, r(obj.value));
     case 'ComplexAssignment':  return new ComplexAssignment(r(obj.target), r(obj.value));
     case 'AugmentedAssignment':return new AugmentedAssignment(r(obj.target), obj.op, r(obj.value));
@@ -182,7 +172,7 @@ function reviveAST(obj) {
     case 'Global':            return new Global(obj.names);
     case 'Nonlocal':          return new Nonlocal(obj.names);
 
-    // ── Control flow ────────────────────────────────────────
+   
     case 'If':
       return new If(
         r(obj.condition),
@@ -200,7 +190,7 @@ function reviveAST(obj) {
     case 'With':
       return new With(r(obj.expr), obj.alias, (obj.body || []).map(r));
 
-    // ── Definitions ─────────────────────────────────────────
+    
     case 'FunctionDef':
       return new FunctionDef(
         obj.name, obj.params, (obj.body || []).map(r),
@@ -211,7 +201,7 @@ function reviveAST(obj) {
       return new ClassDef(obj.name, obj.bases || [], (obj.body || []).map(r),
                           obj.decorators || []);
 
-    // ── Exception handling ───────────────────────────────────
+   
     case 'TryExcept':
       return new TryExcept(
         (obj.body       || []).map(r),
@@ -222,14 +212,14 @@ function reviveAST(obj) {
     case 'ExceptHandler':
       return new ExceptHandler(obj.exc_type, obj.name, (obj.body || []).map(r));
 
-    // ── Imports ─────────────────────────────────────────────
+
     case 'Import':
       return new Import(obj.names);
     case 'FromImport':
       return new FromImport(obj.module, obj.names);
 
     default:
-      return obj;   // pass through unknown nodes unchanged
+      return obj;   
   }
 }
 
@@ -243,7 +233,6 @@ function reviveKwargs(kwargs) {
 }
 
 
-// ── Backend pipeline ─────────────────────────────────────────
 async function runPipeline(sourceCode) {
   let raw;
   try {
@@ -283,7 +272,6 @@ async function runPipeline(sourceCode) {
 }
 
 
-// ── Token formatter ──────────────────────────────────────────
 function formatTokens(tokens) {
   if (!tokens || !tokens.length) return 'No tokens.';
 
@@ -299,7 +287,6 @@ function formatTokens(tokens) {
 }
 
 
-// ── Symbol-table formatter ───────────────────────────────────
 function formatSymbolTable(table) {
   if (!table || !Object.keys(table).length) return 'Empty symbol table.';
   const rows = Object.entries(table)
@@ -309,10 +296,8 @@ function formatSymbolTable(table) {
 }
 
 
-// ── Export (Node.js / bundler) ───────────────────────────────
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    // AST node classes
     Program, NumberNode, StringNode, FStringNode, BoolNode, NoneNode,
     Identifier, Attribute, Subscript, Slice,
     ListLiteral, DictLiteral, TupleLiteral, SetLiteral, ListComp,
@@ -323,7 +308,6 @@ if (typeof module !== 'undefined' && module.exports) {
     If, While, For, ForIn, With,
     FunctionDef, ClassDef, TryExcept, ExceptHandler,
     Import, FromImport,
-    // Functions
     reviveAST, runPipeline, formatTokens, formatSymbolTable,
   };
 }
