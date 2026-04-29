@@ -20,7 +20,6 @@ app = Flask(__name__, static_folder=WEB_DIR, static_url_path="")
 _PY_TO_JS = {"Number": "NumberNode", "String": "StringNode"}
 
 def _ast_to_dict(node):
-    """Recursively convert any AST node to a JSON-serialisable dict."""
     if node is None:
         return None
     if isinstance(node, list):
@@ -31,7 +30,6 @@ def _ast_to_dict(node):
     d   = {"type": t}
     a   = _ast_to_dict   # shorthand
 
-    # ── Literals / atoms ───────────────────────────────────────────────────
     if cls in ("Number", "String", "FString", "BoolLiteral"):
         d["value"] = node.value
     elif cls == "NoneLiteral":
@@ -39,7 +37,6 @@ def _ast_to_dict(node):
     elif cls == "Identifier":
         d["name"] = node.name
 
-    # ── Collections ────────────────────────────────────────────────────────
     elif cls in ("ListLiteral", "TupleLiteral", "SetLiteral"):
         d["elements"] = [a(e) for e in node.elements]
     elif cls == "DictLiteral":
@@ -50,7 +47,6 @@ def _ast_to_dict(node):
         d["iter_"]  = a(node.iter_)
         d["cond"]   = a(node.cond) if node.cond else None
 
-    # ── Names / access ─────────────────────────────────────────────────────
     elif cls == "Attribute":
         d["value"] = a(node.value)
         d["attr"]  = node.attr
@@ -62,7 +58,6 @@ def _ast_to_dict(node):
         d["upper"] = a(node.upper) if node.upper else None
         d["step"]  = a(node.step)  if node.step  else None
 
-    # ── Expressions ────────────────────────────────────────────────────────
     elif cls == "BinaryOp":
         d["left"]  = a(node.left)
         d["op"]    = {"name": node.op.name, "value": node.op.value}
@@ -90,7 +85,6 @@ def _ast_to_dict(node):
         d["args"]   = [a(x) for x in node.args]
         d["kwargs"] = {k: a(v) for k, v in (node.kwargs or {}).items()}
 
-    # ── Statements ─────────────────────────────────────────────────────────
     elif cls == "Program":
         d["statements"] = [a(s) for s in node.statements]
     elif cls == "Assignment":
@@ -119,7 +113,6 @@ def _ast_to_dict(node):
     elif cls in ("Global", "Nonlocal"):
         d["names"] = node.names
 
-    # ── Control flow ───────────────────────────────────────────────────────
     elif cls == "If":
         d["condition"]    = a(node.condition)
         d["body"]         = [a(s) for s in node.body]
@@ -143,7 +136,6 @@ def _ast_to_dict(node):
         d["alias"] = node.alias
         d["body"]  = [a(s) for s in node.body]
 
-    # ── Definitions ────────────────────────────────────────────────────────
     elif cls == "FunctionDef":
         d["name"]       = node.name
         d["params"]     = node.params
@@ -158,7 +150,6 @@ def _ast_to_dict(node):
         d["body"]       = [a(s) for s in node.body]
         d["decorators"] = list(node.decorators or [])
 
-    # ── Exception handling ─────────────────────────────────────────────────
     elif cls == "TryExcept":
         d["body"]       = [a(s) for s in node.body]
         d["handlers"]   = [a(s) for s in node.handlers]
@@ -169,7 +160,6 @@ def _ast_to_dict(node):
         d["name"]     = node.name
         d["body"]     = [a(s) for s in node.body]
 
-    # ── Imports ────────────────────────────────────────────────────────────
     elif cls == "Import":
         d["names"] = node.names
     elif cls == "FromImport":
@@ -186,9 +176,6 @@ def _token_to_dict(tok):
         "column": tok.column
     }
 
-# Patterns that the transpiler handles fine but the JS shim *executor*
-# cannot run meaningfully (file I/O, GUI, OS calls, etc.).
-# These produce a warning banner in the UI — NOT a hard block.
 _RUNTIME_UNSAFE = {
     r"\bopen\s*\(":       "file I/O (open)",
     r"\btkinter\b":       "tkinter GUI",
@@ -208,7 +195,6 @@ def _check_unsupported(src):
     return found
 
 
-# Serve frontend
 @app.route("/")
 def index():
     return send_from_directory(WEB_DIR, "app.html")
@@ -255,14 +241,12 @@ def transpile():
     except:
         pass
 
-    # 4. Semantic
     try:
         SemanticAnalyzer().analyze(ast)
     except SemanticError as e:
         result["error"] = {"stage": "Semantic", "message": str(e)}
         return jsonify(result)
 
-    # 5. Codegen
     try:
         result["jsCode"] = CodeGenerator().generate(ast)
     except CodeGenError as e:
@@ -271,5 +255,101 @@ def transpile():
 
     return jsonify(result)
 
+
+@app.route("/api/execute", methods=["POST"])
+def execute():
+    import subprocess, tempfile, os, re as _re
+
+    data   = request.get_json(force=True, silent=True) or {}
+    source = data.get("source", "")
+    inputs = data.get("inputs", [])
+
+    if not source.strip():
+        return jsonify({"error": "No source code provided"}), 400
+
+    stdin_data = "\n".join(str(v) for v in inputs) + ("\n" if inputs else "")
+
+    try:
+        py_result = subprocess.run(
+            [sys.executable, "-c", source],
+            input=stdin_data, capture_output=True, text=True, timeout=10,
+        )
+        if py_result.returncode != 0:
+            err_lines = py_result.stderr.strip().splitlines()
+            py_output = f"[Runtime Error] {err_lines[-1]}" if err_lines else "[Runtime Error] Unknown"
+        else:
+            py_output = py_result.stdout.rstrip("\n")
+    except subprocess.TimeoutExpired:
+        py_output = "[Error] Python execution timed out."
+    except Exception as e:
+        py_output = f"[Error] {str(e)}"
+
+    js_output = ""
+    js_code = None
+    try:
+        tokens = Lexer(source).tokenize()
+        ast    = Parser(tokens).parse()
+        SemanticAnalyzer().analyze(ast)
+        js_code = CodeGenerator().generate(ast)
+    except Exception as e:
+        js_output = f"[Transpiler Error] {str(e)}"
+
+    if js_code:
+        inputs_js = "[" + ", ".join(f'"{v}"' for v in inputs) + "]"
+        shim = (
+            "const _inputs = " + inputs_js + ";\n"
+            "let _inputIndex = 0;\n"
+            "function prompt(msg) {\n"
+            "  if (msg) process.stdout.write(msg);\n"
+            "  return _inputs[_inputIndex++] || '';\n"
+            "}\n"
+        )
+        full_js  = shim + js_code
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".js", delete=False, encoding="utf-8"
+            ) as f:
+                f.write(full_js)
+                tmp_path = f.name
+            js_result = subprocess.run(
+                ["node", tmp_path],
+                capture_output=True, text=True, timeout=10, encoding="utf-8"
+            )
+            if js_result.returncode != 0:
+                stderr = js_result.stderr.strip()
+                lines  = stderr.splitlines() if stderr else []
+                js_output = next(
+                    (f"[JS Runtime Error] {l.strip()}" for l in lines if "Error" in l or "error" in l),
+                    f"[JS Runtime Error] {lines[-1]}" if lines else "[JS Runtime Error] Unknown"
+                )
+            else:
+                js_output = js_result.stdout.rstrip("\n")
+        except FileNotFoundError:
+            js_output = "[Error] Node.js is not installed or not in PATH."
+        except subprocess.TimeoutExpired:
+            js_output = "[Error] JS execution timed out."
+        except Exception as e:
+            js_output = f"[Error] {str(e)}"
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try: os.remove(tmp_path)
+                except Exception: pass
+
+    def _norm(t):
+        t = _re.sub(r'(-?\d+)\.0\b', r'\1', t)       
+        t = _re.sub(r'\[\s+', '[', t)                  
+        t = _re.sub(r'\s+\]', ']', t)                  
+        t = _re.sub(r',\s+', ', ', t)                  
+        t = _re.sub(r'\s+', ' ', t).strip()            
+        return t
+
+    return jsonify({
+        "py_output":   py_output,
+        "js_output":   js_output,
+        "match":       _norm(py_output) == _norm(js_output),
+        "unsupported": _check_unsupported(source),
+    })
+
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5001)
