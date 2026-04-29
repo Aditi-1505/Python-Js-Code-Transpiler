@@ -11,7 +11,7 @@ def print_tokens(tokens):
     for token in tokens:
         if token.type not in (TokenType.EOF, TokenType.COMMENT):
             print(f"{token.type.name:<25} {repr(token.value):<20} {token.line}")
-
+ 
 
 def run_transpiler(source_code):
     print("\n" + "=" * 55)
