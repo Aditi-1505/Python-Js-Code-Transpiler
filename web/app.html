@@ -10,7 +10,6 @@
 </head>
 <body>
 
-<!-- ── TOPBAR ── -->
 <header class="topbar">
   <a href="#" class="logo">
     <div class="logo-mark">⇄</div>
@@ -22,14 +21,8 @@
   </div>
 
 
-  <div class="user-chip">
-    <div class="user-avatar" id="user-avatar"></div>
-    <span class="user-name" id="user-name"></span>
-  </div>
-
 </header>
 
-<!-- ── STATUS BAR ── -->
 <div class="statusbar">
   <div class="status-dot" id="st-dot"></div>
   <span class="status-text" id="st-text">Ready — write some Python and hit ▶ Transpile</span>
@@ -38,10 +31,8 @@
   </div>
 </div>
 
-<!-- ── WORKSPACE ── -->
 <div class="workspace">
 
-  <!-- ═══ EDITOR ═══ -->
   <div class="editor-side">
     <div class="panel-hdr">
       <div class="panel-hdr-left">
@@ -81,7 +72,6 @@
     </div>
   </div>
 
-  <!-- ═══ OUTPUT ═══ -->
   <div class="output-side">
     <div class="tab-row">
       <div class="tab-btn active" data-tab="tokens" onclick="switchTab('tokens')">
@@ -99,11 +89,12 @@
       <div class="tab-btn" data-tab="js" onclick="switchTab('js')">
         <span class="tab-pip"></span>JS Output
       </div>
+      <div class="tab-btn" data-tab="executor" onclick="switchTab('executor')">
+        <span class="tab-pip"></span>Executor
+      </div>
     </div>
 
     <div class="panels">
-
-      <!-- tokens -->
       <div class="panel active" id="panel-tokens">
         <div class="warn-banner" id="warn-banner">
           <strong>⚠ Runtime warning</strong>
@@ -112,7 +103,7 @@
         <pre class="code-block" id="out-tokens">Write some Python code on the left, then click ▶ Transpile to see the token stream here.</pre>
       </div>
 
-      <!-- AST visual -->
+    
       <div class="panel canvas-panel" id="panel-ast">
         <div class="canvas-toolbar">
           <span class="canvas-title">Raw AST</span>
@@ -127,21 +118,59 @@
         </div>
       </div>
 
-      <!-- symbols -->
+      
       <div class="panel" id="panel-sym">
         <div id="out-sym">
           <pre class="code-block">Symbol table will appear here after transpilation.</pre>
         </div>
       </div>
 
-      <!-- semantic -->
+   
       <div class="panel" id="panel-semantic">
         <pre class="code-block" id="out-semantic">Semantic analysis results will appear here.</pre>
       </div>
 
-      <!-- JS output -->
+   
       <div class="panel" id="panel-js">
         <pre class="code-block" id="out-js">Generated JavaScript will appear here after a successful transpile.</pre>
+      </div>
+
+     
+      <div class="panel" id="panel-executor">
+        <div class="exec-wrap">
+
+          <div class="exec-header">
+            <div class="exec-title">Output Comparison</div>
+            <div class="exec-subtitle">Runs your Python code and the transpiled JS side by side and compares results.</div>
+          </div>
+
+          <div class="exec-inputs-section" id="exec-inputs-section" style="display:none">
+            <div class="exec-inputs-label">Program Inputs</div>
+            <div class="exec-inputs-grid" id="exec-inputs-grid"></div>
+          </div>
+
+          <div class="exec-toolbar">
+            <button class="btn btn-primary" id="btn-exec" onclick="runExecutor()">
+              Run Comparison
+              <span class="spinner" id="exec-spinner"></span>
+            </button>
+            <span class="exec-hint" id="exec-hint">Transpile first, then click Run Comparison</span>
+          </div>
+
+          <div class="exec-results">
+            <div class="exec-col">
+              <div class="exec-col-hdr exec-py-hdr">Python Output</div>
+              <div class="exec-out" id="exec-py-out">Output will appear here.</div>
+            </div>
+            <div class="exec-col">
+              <div class="exec-col-hdr exec-js-hdr">JavaScript Output</div>
+              <div class="exec-out" id="exec-js-out">Output will appear here.</div>
+            </div>
+          </div>
+
+          <div class="exec-verdict" id="exec-verdict" style="display:none"></div>
+
+        </div>
       </div>
 
     </div><!-- /panels -->
@@ -176,19 +205,7 @@
 
 <script>
 
-(function () {
-  const raw  = sessionStorage.getItem('pyjs_user');
-  const user = raw ? JSON.parse(raw) : { name: 'Guest', email: null };
-  document.getElementById('user-name').textContent   = user.name;
-  document.getElementById('user-avatar').textContent = user.name.charAt(0).toUpperCase();
-})();
 
-function signOut() {
-  // tell Flask to clear the server-side session too
-  fetch('/signout').catch(() => {});
-  sessionStorage.removeItem('pyjs_user');
-  window.location.href = 'login.html';
-}
 
 const editorEl  = document.getElementById('editor');
 const lineNumEl = document.getElementById('line-nums');
@@ -328,21 +345,16 @@ function countNodes(n) {
   return c;
 }
 const NODE_COLORS = {
-  // Structure
   Program:'#4c72c4', FunctionDef:'#e05c9a', ClassDef:'#26a69a', Lambda:'#00897b',
-  // Statements
   Assignment:'#8b5cf6', ComplexAssignment:'#7c5cbf', AugmentedAssignment:'#8d6ab8',
   Print:'#10b981', Return:'#e57373', Raise:'#ef5350', Delete:'#d84315',
   Assert:'#ff8a65', Pass:'#90a4ae', Break:'#78909c', Continue:'#546e7a',
   Global:'#a1887f', Nonlocal:'#8d6e63', Import:'#78909c', FromImport:'#607d8b',
-  // Control flow
   If:'#ef4444', While:'#ec4899', For:'#6366f1', ForIn:'#6a5fbf',
   With:'#5c7abf', TryExcept:'#c0784a', ExceptHandler:'#bf6a3a',
-  // Expressions
   BinaryOp:'#f59e0b', UnaryOp:'#c47820', BoolOp:'#b86820', Ternary:'#e09030',
   FunctionCall:'#06b6d4', MethodCall:'#2a9aac', Attribute:'#5b8fbf',
   Subscript:'#4a7faf', ListComp:'#43a869',
-  // Literals
   NumberNode:'#22c55e', StringNode:'#eab308', FStringNode:'#b89020',
   BoolNode:'#5b9b7a', NoneNode:'#9e9e9e',
   ListLiteral:'#4caf7a', DictLiteral:'#bf7040', TupleLiteral:'#7a8fbf',
@@ -359,7 +371,6 @@ const NW=120, NH=40, HG=18, VG=54;
 function astKids(n) {
   if (!n) return [];
   const t = n.constructor.name;
-  // Structure
   if (t==='Program')    return n.statements||[];
   if (t==='FunctionDef') return n.body||[];
   if (t==='ClassDef')   return n.body||[];
@@ -529,14 +540,13 @@ function drawTree(svgEl, gEl, tipEl, root, isOpt) {
   const maxX=Math.max(...nodes.map(n=>n.x+NW/2))+30;
   const maxY=Math.max(...nodes.map(n=>n.y+NH))+30;
 
-  // Give the SVG real pixel dimensions so the parent wrapper can scroll
   svgEl.setAttribute('width',  maxX);
   svgEl.setAttribute('height', maxY);
   svgEl.setAttribute('viewBox',`0 0 ${maxX} ${maxY}`);
 
   const ec='#94a3b8';
 
-  // edges
+ 
   nodes.forEach(n=>n.kids.forEach(k=>{
     const x1=n.x,y1=n.y+NH,x2=k.x,y2=k.y,my=(y1+y2)/2;
     el('path',{
@@ -545,17 +555,14 @@ function drawTree(svgEl, gEl, tipEl, root, isOpt) {
     },gEl);
   }));
 
-  // nodes
   nodes.forEach(n=>{
     const col=NODE_COLORS[n.ast.constructor.name]||'#64748b';
     const rx=n.x-NW/2, ry=n.y;
     const g=el('g',{transform:`translate(${rx},${ry})`},gEl);
     g.style.cursor='pointer';
 
-    // drop shadow
     el('rect',{x:2,y:3,width:NW,height:NH,rx:7,ry:7,fill:'rgba(0,0,0,.09)'},g);
 
-    // body
     el('rect',{x:0,y:0,width:NW,height:NH,rx:7,ry:7,fill:col,class:'node-bg'},g);
 
     const [top,sub]=astLabel(n.ast), cx=NW/2;
@@ -569,7 +576,6 @@ function drawTree(svgEl, gEl, tipEl, root, isOpt) {
       t1.textContent=top;
     }
 
-    // tooltip events
     g.addEventListener('mouseenter', ()=>{
       tipEl.textContent=astTip(n.ast);
       tipEl.style.display='block';
@@ -661,6 +667,9 @@ async function runPipelineUI() {
     document.getElementById('s-syms').textContent   = syms;
     document.getElementById('s-lines').textContent  = lines;
     document.getElementById('s-time').textContent   = elapsed+'ms';
+
+    setupExecutor(src);
+    tabMark('executor', 'ok');
 }
 
 function tabMark(name, state) {
@@ -671,6 +680,131 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); runPipelineUI(); }
   if (e.key==='Escape') closeModal();
 });
+
+
+let _lastSrc = '';
+
+function setupExecutor(sourceCode) {
+  _lastSrc = sourceCode;
+  const grid    = document.getElementById('exec-inputs-grid');
+  const section = document.getElementById('exec-inputs-section');
+  const hint    = document.getElementById('exec-hint');
+  grid.innerHTML = '';
+
+  const prompts = extractInputPrompts(sourceCode);
+  if (prompts.length) {
+    section.style.display = 'block';
+    prompts.forEach((label, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'exec-input-wrap';
+      wrap.innerHTML = `
+        <label class="exec-input-label">${label || 'Input ' + (i + 1)}</label>
+        <input class="exec-input-field" id="exec-inp-${i}" type="text" placeholder="value..." />
+      `;
+      grid.appendChild(wrap);
+    });
+    hint.textContent = `${prompts.length} input(s) detected — fill them in and click Run`;
+  } else {
+    section.style.display = 'none';
+    hint.textContent = 'Click Run Comparison to execute';
+  }
+
+  const pyOut = document.getElementById('exec-py-out');
+  const jsOut = document.getElementById('exec-js-out');
+  pyOut.textContent = 'Output will appear here.';
+  jsOut.textContent = 'Output will appear here.';
+  pyOut.className = 'exec-out';
+  jsOut.className = 'exec-out';
+  document.getElementById('exec-verdict').style.display = 'none';
+}
+
+function extractInputPrompts(src) {
+  const re = /\binput\s*\(([^)]*)\)/g;
+  const out = [];
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    const inner = m[1].trim();
+    const sm    = inner.match(/^["'](.+?)["']$/);
+    out.push(sm ? sm[1].replace(/:\s*$/, '').trim() : null);
+  }
+  return out;
+}
+
+async function runExecutor() {
+  if (!_lastSrc) {
+    toast('Transpile your code first.');
+    return;
+  }
+
+  const btn     = document.getElementById('btn-exec');
+  const spinner = document.getElementById('exec-spinner');
+  const pyOut   = document.getElementById('exec-py-out');
+  const jsOut   = document.getElementById('exec-js-out');
+  const verdict = document.getElementById('exec-verdict');
+
+  btn.disabled       = true;
+  spinner.style.display = 'inline-block';
+  pyOut.textContent  = 'Running...';
+  jsOut.textContent  = 'Running...';
+  pyOut.className    = 'exec-out';
+  jsOut.className    = 'exec-out';
+  verdict.style.display = 'none';
+
+  // collect user inputs from the fields
+  const inputs = [];
+  let i = 0;
+  while (document.getElementById(`exec-inp-${i}`)) {
+    inputs.push(document.getElementById(`exec-inp-${i}`).value);
+    i++;
+  }
+
+  let result;
+  try {
+    const resp = await fetch('/api/execute', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ source: _lastSrc, inputs }),
+    });
+    result = await resp.json();
+  } catch (err) {
+    pyOut.textContent = '[Network Error] Could not reach the server.';
+    pyOut.className   = 'exec-out exec-err';
+    jsOut.textContent = '';
+    btn.disabled      = false;
+    spinner.style.display = 'none';
+    return;
+  }
+
+  btn.disabled       = false;
+  spinner.style.display = 'none';
+
+  const pyText = result.py_output || '';
+  const jsText = result.js_output || '';
+  const match  = result.match;
+
+  pyOut.textContent = pyText || '(no output)';
+  jsOut.textContent = jsText || '(no output)';
+
+  if (pyText.startsWith('[') && (pyText.includes('Error') || pyText.includes('error'))) {
+    pyOut.className = 'exec-out exec-err';
+  } else {
+    pyOut.className = 'exec-out exec-ok';
+  }
+  if (jsText.startsWith('[') && (jsText.includes('Error') || jsText.includes('error'))) {
+    jsOut.className = 'exec-out exec-err';
+  } else {
+    jsOut.className = 'exec-out exec-ok';
+  }
+
+  verdict.style.display = 'flex';
+  if (match) {
+    verdict.className   = 'exec-verdict exec-verdict-match';
+    verdict.innerHTML   = '<span class="verdict-icon">&#10004;</span> Both outputs match — transpilation is correct!';
+  } else {
+    verdict.className   = 'exec-verdict exec-verdict-mismatch';
+    verdict.innerHTML   = '<span class="verdict-icon">&#10008;</span> Outputs do not match — check the transpilation logic.';
+  }
+}
 </script>
 </body>
 </html>
