@@ -1,0 +1,69 @@
+lexer
+name = "Aditi
+age = 20
+print(name)
+
+
+Syntax:
+name = "Aditi"
+age = 20
+print("Name:", name)
+print("Age:", age)
+total = age + 10
+print("Future age:", total)
+2marks = 85
+grade = "A"
+if 2marks > 80:
+    print("Excellent")
+else:
+    print("Good")
+count = 1
+while count <= 5:
+    square = count * count
+    print("Square:", square)
+    count = count + 1
+print("Program finished")
+
+semantic:
+name = input("Enter your name")
+age = int(input("Enter your age"))
+print("Name:", name)
+print("Age:", age)
+year = 2026
+birth_year = year - age
+print("Birth year:", birth_year)
+count = 1
+while count <= 5:
+    square = count * count
+    print("Square:", square)
+    total = total + square
+    count = count + 1
+print("Total:", total)
+print("Program finished")
+
+
+colon missing
+def calculate_average(lst)
+    total = sum(lst)
+    avg = total / len(lst)
+    return avg
+
+def main():
+    numbers = [10, 20, 30, 40, 50]
+    
+    result = calculate_average(numbers)
+    print("Average is: ", result)
+
+    for i in range(5):
+        print(i)
+
+    x = 10
+    y = 20
+    print(x + y)   
+
+main()
+
+
+def print_list(lst:
+    for i in lst:
+        print(i)
